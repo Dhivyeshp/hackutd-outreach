@@ -55,7 +55,7 @@ export function OrganizerPanel() {
     return (
       <Card className="space-y-3">
         <h2 className="text-lg font-semibold">Connect your Gmail</h2>
-        <p className="text-sm text-slate-600">Reach sends from your own @hackutd.co inbox. One consent screen, nothing else to set up.</p>
+        <p className="text-sm text-slate-600">Reach sends from your own @acmutd.co inbox. One consent screen, nothing else to set up.</p>
         <ConnectGmailButton />
       </Card>
     );

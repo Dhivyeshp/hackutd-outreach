@@ -5,7 +5,7 @@ import { HttpError, handle, ok, parseBody } from '@/lib/http';
 import { HARD_MAX_DAILY } from '@/lib/limits';
 import { allOrganizerStats } from '@/lib/stats';
 
-const domain = () => (process.env.ALLOWED_DOMAIN ?? 'hackutd.co').toLowerCase();
+const domain = () => (process.env.ALLOWED_DOMAIN ?? 'acmutd.co').toLowerCase();
 
 const invite = z.object({
   email: z.string().email().max(254).transform((e) => e.toLowerCase()),

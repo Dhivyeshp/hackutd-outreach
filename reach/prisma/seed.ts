@@ -11,7 +11,7 @@ async function main(): Promise<void> {
   await prisma.campaign.upsert({ where: { id: 'default' }, update: {}, create: { id: 'default' } });
 
   const organizers = await Promise.all(
-    ['organizer1@hackutd.co', 'organizer2@hackutd.co'].map((email, i) =>
+    ['organizer1@acmutd.co', 'organizer2@acmutd.co'].map((email, i) =>
       prisma.user.upsert({
         where: { email },
         update: {},

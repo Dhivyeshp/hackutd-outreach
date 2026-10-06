@@ -1,6 +1,6 @@
 # Reach
 
-HackUTD organizers send personalized outreach emails to their assigned contacts from their **own** @hackutd.co Gmail, in one or two clicks.
+HackUTD organizers send personalized outreach emails to their assigned contacts from their **own** @acmutd.co Gmail, in one or two clicks.
 
 Next.js (App Router) · TypeScript · Tailwind · Prisma + Supabase Postgres · Auth.js (Google) · Gmail API · Vercel
 
@@ -41,14 +41,14 @@ openssl rand -hex 24      # CRON_SECRET
 | `NEXTAUTH_URL` | `http://localhost:3000` locally, your Vercel URL in prod |
 | `NEXTAUTH_SECRET` | Session signing secret |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | OAuth web client |
-| `ALLOWED_DOMAIN` | Defaults to `hackutd.co` |
+| `ALLOWED_DOMAIN` | Defaults to `acmutd.co` |
 | `ADMIN_EMAIL` | The first sign-in with this email becomes admin |
 | `ENCRYPTION_KEY` | AES-256-GCM key for refresh tokens at rest |
 | `CRON_SECRET` | Bearer token the cron routes require |
 
 ## Google Cloud setup
 
-1. In the Google Cloud console, create a project under the **hackutd.co** organization.
+1. In the Google Cloud console, create a project under the **acmutd.co** organization.
 2. **APIs & Services > Library**: enable **Gmail API**.
 3. **OAuth consent screen**: user type **Internal** (no Google verification needed). Add scopes `.../auth/gmail.send` and `.../auth/gmail.readonly`.
 4. **Credentials > Create credentials > OAuth client ID > Web application**. Authorized redirect URIs:
@@ -92,7 +92,7 @@ The send route can run up to ~4 minutes per call (`maxDuration = 300`), which ne
 
 ## Day-to-day
 
-**Add organizers:** Admin > Organizers > invite their @hackutd.co email. They can then sign in. Only invited accounts (and `ADMIN_EMAIL`) get in.
+**Add organizers:** Admin > Organizers > invite their @acmutd.co email. They can then sign in. Only invited accounts (and `ADMIN_EMAIL`) get in.
 
 **Import contacts:** Admin > Contacts > choose the CSV, match columns, import. Duplicates (by lowercased email) are skipped and bad syntax is rejected. If you include a NeverBounce/ZeroBounce result column, map it to **Verification**. Only `valid` contacts are sent to unless "Also send to risky/unknown" is enabled on the Template tab. `invalid` contacts are never sent.
 

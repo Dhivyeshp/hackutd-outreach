@@ -32,8 +32,8 @@ export default async function Home({ searchParams }: PageProps<'/'>) {
       ) : (
         <Card className="space-y-4">
           <h2 className="text-lg font-semibold">HackUTD outreach, from your own inbox</h2>
-          <p className="text-sm text-slate-600">Sign in with your @hackutd.co account to get started.</p>
-          {denied && <Notice tone="red">That account isn&apos;t allowed. Use your @hackutd.co account and ask an admin to invite you.</Notice>}
+          <p className="text-sm text-slate-600">Sign in with your @acmutd.co account to get started.</p>
+          {denied && <Notice tone="red">That account isn&apos;t allowed. Use your @acmutd.co account and ask an admin to invite you.</Notice>}
           <SignInButton />
         </Card>
       )}

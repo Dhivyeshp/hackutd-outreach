@@ -61,10 +61,10 @@ export default function OrganizersPage() {
       {error && <Notice tone="red">{error}</Notice>}
       <Card>
         <form onSubmit={invite} className="flex flex-wrap gap-3">
-          <input className={`${inputCls} max-w-sm`} type="email" required placeholder="name@hackutd.co" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input className={`${inputCls} max-w-sm`} type="email" required placeholder="name@acmutd.co" value={email} onChange={(e) => setEmail(e.target.value)} />
           <Button type="submit">Invite organizer</Button>
         </form>
-        <p className="mt-2 text-xs text-slate-500">They can sign in once invited. Only @hackutd.co accounts are accepted.</p>
+        <p className="mt-2 text-xs text-slate-500">They can sign in once invited. Only @acmutd.co accounts are accepted.</p>
       </Card>
 
       <Card className="overflow-x-auto p-0">

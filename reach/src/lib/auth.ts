@@ -5,7 +5,7 @@ import { encryptSecret } from './crypto';
 import { prisma } from './db';
 import { HttpError } from './http';
 
-const domain = () => (process.env.ALLOWED_DOMAIN ?? 'hackutd.co').toLowerCase();
+const domain = () => (process.env.ALLOWED_DOMAIN ?? 'acmutd.co').toLowerCase();
 const adminEmail = () => process.env.ADMIN_EMAIL?.toLowerCase();
 
 const BASE_SCOPE = 'openid email profile';
