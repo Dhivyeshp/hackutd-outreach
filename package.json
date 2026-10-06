@@ -1,0 +1,11 @@
+{
+  "name": "faculty-scraper",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -n api,ui \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "install:all": "npm install && npm install --prefix server && npm install --prefix client",
+    "test": "npm test --prefix server"
+  },
+  "devDependencies": { "concurrently": "^9.0.0" }
+}

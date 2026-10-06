@@ -1,0 +1,130 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  ORGANIZER
+}
+
+enum Verification {
+  VALID
+  RISKY
+  INVALID
+  UNKNOWN
+}
+
+enum ContactStatus {
+  PENDING
+  QUEUED
+  SENDING
+  SENT
+  REPLIED
+  BOUNCED
+  ERROR
+  OPTED_OUT
+  DUPLICATE
+  INVALID
+}
+
+model User {
+  id                    String    @id @default(cuid())
+  email                 String    @unique
+  name                  String    @default("")
+  role                  Role      @default(ORGANIZER)
+  timezone              String    @default("America/Chicago")
+  gmailConnected        Boolean   @default(false)
+  encryptedRefreshToken String?
+  dailyCap              Int       @default(1000)
+  rampEnabled           Boolean   @default(false)
+  paused                Boolean   @default(false)
+  pausedReason          String?
+  pausedUntil           DateTime?
+  firstSendAt           DateTime?
+  bounceCheckSince      DateTime?
+  pausedByAdmin         Boolean   @default(false)
+  disabled              Boolean   @default(false)
+  createdAt             DateTime  @default(now())
+
+  contacts Contact[]
+  sendLogs SendLog[]
+}
+
+model Contact {
+  id             String        @id @default(cuid())
+  email          String        @unique
+  name           String        @default("")
+  title          String        @default("")
+  department     String        @default("")
+  uni            String        @default("")
+  verification   Verification  @default(UNKNOWN)
+  assignedToId   String?
+  assignedTo     User?         @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
+  status         ContactStatus @default(PENDING)
+  sentAt         DateTime?
+  gmailThreadId  String?
+  gmailMessageId String?
+  errorNote      String?
+  lastCheckedAt  DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  sendLogs SendLog[]
+
+  @@index([assignedToId, status])
+  @@index([status, sentAt])
+}
+
+model Campaign {
+  id             String  @id @default("default")
+  subject        String  @default("Partnering with HackUTD")
+  body           String  @default("Hi {{first_name}},\n\nI'm {{sender_name}} from HackUTD, UT Dallas's student hackathon. We'd love to have {{uni}} students and faculty involved.\n\nWould you be open to a quick chat?\n\nThanks,\n{{sender_name}}")
+  active         Boolean @default(true)
+  mailingAddress String  @default("HackUTD, The University of Texas at Dallas, 800 W Campbell Rd, Richardson, TX 75080")
+  allowNonValid  Boolean @default(false)
+  maxPerOrganizer Int    @default(1300)
+}
+
+model SendLog {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contactId  String
+  contact    Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  sentAt     DateTime @default(now())
+  quotaUnits Int      @default(100)
+  result     String
+
+  @@index([userId, sentAt])
+}
+
+model QuotaUsage {
+  date  String @id
+  units Int    @default(0)
+}
+
+model ProcessedMessage {
+  id        String   @id
+  userId    String
+  createdAt DateTime @default(now())
+}
+
+model Setting {
+  key   String @id
+  value String
+}
+
+model Alert {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  level     String
+  message   String
+  resolved  Boolean  @default(false)
+}
