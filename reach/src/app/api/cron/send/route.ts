@@ -1,13 +1,9 @@
-import { requireCron } from '@/lib/auth';
+import { cronHandler } from '@/lib/cron';
 import { runSendTick } from '@/lib/engine';
-import { handle, ok } from '@/lib/http';
 
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
-const run = handle(async (req: Request) => {
-  requireCron(req);
-  return ok(await runSendTick());
-});
+const run = cronHandler('send', () => runSendTick());
 
 export { run as GET, run as POST };
