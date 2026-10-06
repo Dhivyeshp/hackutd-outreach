@@ -79,7 +79,7 @@ export default function ImportPage() {
         <input type="file" accept=".csv,text/csv" onChange={(e) => onFile(e.target.files?.[0])} className="text-sm" />
         {headers.length > 0 && (
           <>
-            <p className="text-sm text-slate-600">{rowCount.toLocaleString()} rows. Match your columns:</p>
+            <p className="text-sm text-zinc-400">{rowCount.toLocaleString()} rows. Match your columns:</p>
             <div className="grid gap-3 sm:grid-cols-2">
               {FIELDS.map((f) => (
                 <label key={f.key} className="text-sm">
@@ -111,7 +111,7 @@ export default function ImportPage() {
 
       <Card className="space-y-3">
         <h2 className="font-semibold">2. Auto-assign</h2>
-        <p className="text-sm text-slate-600">Splits unassigned, valid contacts round-robin across organizers (max per organizer is set on the Template tab).</p>
+        <p className="text-sm text-zinc-400">Splits unassigned, valid contacts round-robin across organizers (max per organizer is set on the Template tab).</p>
         <Button disabled={busy} onClick={autoAssign}>
           Auto-assign contacts
         </Button>

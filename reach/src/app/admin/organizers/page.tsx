@@ -16,6 +16,7 @@ interface Org {
   pausedReason: string | null;
   timezone: string;
   disabled: boolean;
+  senderTitle: string;
 }
 
 export default function OrganizersPage() {
@@ -34,7 +35,7 @@ export default function OrganizersPage() {
     void load();
   }, [load]);
 
-  async function patch(id: string, fields: Partial<Pick<Org, 'role' | 'paused' | 'rampEnabled' | 'dailyCap' | 'timezone' | 'disabled'>>) {
+  async function patch(id: string, fields: Partial<Pick<Org, 'role' | 'paused' | 'rampEnabled' | 'dailyCap' | 'timezone' | 'disabled' | 'senderTitle'>>) {
     setError('');
     try {
       await api('/api/admin/organizers', { method: 'PATCH', body: { id, ...fields } });
@@ -64,32 +65,40 @@ export default function OrganizersPage() {
           <input className={`${inputCls} max-w-sm`} type="email" required placeholder="name@acmutd.co" value={email} onChange={(e) => setEmail(e.target.value)} />
           <Button type="submit">Invite organizer</Button>
         </form>
-        <p className="mt-2 text-xs text-slate-500">They can sign in once invited. Only @acmutd.co accounts are accepted.</p>
+        <p className="mt-2 text-xs text-zinc-500">They can sign in once invited. Only @acmutd.co accounts are accepted.</p>
       </Card>
 
       <Card className="overflow-x-auto p-0">
         <table className="w-full text-left text-sm">
-          <thead className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
+          <thead className="border-b border-white/10 text-xs uppercase tracking-wide text-zinc-500">
             <tr>
-              {['User', 'Role', 'Gmail', 'Daily cap', 'Ramp', 'Sending', 'Access'].map((h) => (
+              {['User', 'Role', 'Title in emails', 'Gmail', 'Daily cap', 'Ramp', 'Sending', 'Access'].map((h) => (
                 <th key={h} className="px-4 py-3">
                   {h}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-white/10">
             {orgs.map((o) => (
               <tr key={o.id}>
                 <td className="px-4 py-3 font-medium">
                   {o.name || '(not signed in yet)'}
-                  <div className="text-xs font-normal text-slate-500">{o.email}</div>
+                  <div className="text-xs font-normal text-zinc-500">{o.email}</div>
                 </td>
                 <td className="px-4 py-3">
                   <select className={inputCls} value={o.role} onChange={(e) => patch(o.id, { role: e.target.value as Org['role'] })}>
                     <option value="ORGANIZER">Organizer</option>
                     <option value="ADMIN">Admin</option>
                   </select>
+                </td>
+                <td className="px-4 py-3">
+                  <input
+                    className={`${inputCls} w-44`}
+                    defaultValue={o.senderTitle}
+                    maxLength={80}
+                    onBlur={(e) => e.target.value.trim() && e.target.value.trim() !== o.senderTitle && patch(o.id, { senderTitle: e.target.value.trim() })}
+                  />
                 </td>
                 <td className="px-4 py-3">{o.gmailConnected ? <Badge tone="green">Connected</Badge> : <Badge>Not connected</Badge>}</td>
                 <td className="px-4 py-3">

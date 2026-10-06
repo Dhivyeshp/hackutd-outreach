@@ -46,7 +46,7 @@ export default function AdminDashboard() {
   }
 
   if (error) return <Notice tone="red">{error}</Notice>;
-  if (!data) return <p className="text-slate-500">Loading…</p>;
+  if (!data) return <p className="text-zinc-500">Loading…</p>;
   const pct = Math.min(100, (data.quota.used / data.quota.pauseAt) * 100);
   const total = data.organizers.reduce(
     (a, o) => ({ sent: a.sent + o.stats.sent, replied: a.replied + o.stats.replied, bounced: a.bounced + o.stats.bounced, day: a.day + o.stats.sentLast24h }),
@@ -77,7 +77,7 @@ export default function AdminDashboard() {
             <div key={a.id} className="flex gap-2 text-sm">
               <Badge tone={a.level === 'critical' ? 'red' : 'amber'}>{a.level}</Badge>
               <span>{a.message}</span>
-              <span className="ml-auto text-slate-400">{new Date(a.createdAt).toLocaleString()}</span>
+              <span className="ml-auto text-zinc-400">{new Date(a.createdAt).toLocaleString()}</span>
             </div>
           ))}
         </Card>
@@ -86,14 +86,14 @@ export default function AdminDashboard() {
       <Card className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-semibold">Project quota today (estimated)</h2>
-          <span className="text-sm text-slate-500">
+          <span className="text-sm text-zinc-500">
             {data.quota.used.toLocaleString()} / {data.quota.pauseAt.toLocaleString()} units
           </span>
         </div>
-        <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-          <div className={`h-full ${pct > 80 ? 'bg-rose-500' : 'bg-indigo-500'}`} style={{ width: `${pct}%` }} />
+        <div className="h-2 overflow-hidden rounded-full bg-white/10">
+          <div className={`h-full ${pct > 80 ? 'bg-rose-500' : 'bg-white'}`} style={{ width: `${pct}%` }} />
         </div>
-        <div className="flex flex-wrap gap-6 text-sm text-slate-600">
+        <div className="flex flex-wrap gap-6 text-sm text-zinc-400">
           <span>{total.sent.toLocaleString()} sent</span>
           <span>{total.day.toLocaleString()} in last 24h</span>
           <span>{total.replied.toLocaleString()} replied</span>
@@ -109,7 +109,7 @@ export default function AdminDashboard() {
 
       <Card className="overflow-x-auto p-0">
         <table className="w-full text-left text-sm">
-          <thead className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
+          <thead className="border-b border-white/10 text-xs uppercase tracking-wide text-zinc-500">
             <tr>
               {['Organizer', 'Assigned', 'Sent', 'Replied', 'Bounced', 'Pending', '24h', 'Bounce %', 'Status'].map((h) => (
                 <th key={h} className="px-4 py-3">
@@ -118,12 +118,12 @@ export default function AdminDashboard() {
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-white/10">
             {data.organizers.map((o) => (
               <tr key={o.id}>
                 <td className="px-4 py-3 font-medium">
                   {o.name}
-                  <div className="text-xs font-normal text-slate-500">{o.email}</div>
+                  <div className="text-xs font-normal text-zinc-500">{o.email}</div>
                 </td>
                 <td className="px-4 py-3 tabular-nums">{o.stats.assigned}</td>
                 <td className="px-4 py-3 tabular-nums">{o.stats.sent}</td>
@@ -139,7 +139,7 @@ export default function AdminDashboard() {
             ))}
             {!data.organizers.length && (
               <tr>
-                <td colSpan={9} className="px-4 py-6 text-center text-slate-500">
+                <td colSpan={9} className="px-4 py-6 text-center text-zinc-500">
                   No organizers yet. Invite some on the Organizers tab.
                 </td>
               </tr>
