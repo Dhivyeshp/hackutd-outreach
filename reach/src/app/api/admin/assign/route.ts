@@ -20,7 +20,7 @@ export const POST = handle(async (req: Request) => {
   const campaign = await getCampaign();
   const cap = max ?? campaign.maxPerOrganizer;
 
-  const organizers = await prisma.user.findMany({ where: { role: 'ORGANIZER' }, select: { id: true } });
+  const organizers = await prisma.user.findMany({ where: { disabled: false }, select: { id: true } });
   const loads = await prisma.contact.groupBy({
     by: ['assignedToId'],
     where: { assignedToId: { in: organizers.map((o) => o.id) } },

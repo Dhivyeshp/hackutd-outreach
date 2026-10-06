@@ -10,7 +10,7 @@ const action = z.object({ action: z.enum(['pause_all', 'resume_all', 'resolve_al
 
 export const GET = handle(async () => {
   await requireAdmin();
-  const users = await prisma.user.findMany({ where: { role: 'ORGANIZER' }, orderBy: { createdAt: 'asc' } });
+  const users = await prisma.user.findMany({ where: { disabled: false }, orderBy: { createdAt: 'asc' } });
   const [stats, quota, global, alerts, unassigned] = await Promise.all([
     allOrganizerStats(users.map((u) => u.id)),
     quotaToday(),
