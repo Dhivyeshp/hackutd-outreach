@@ -16,27 +16,27 @@ describe('inSendWindow', () => {
 });
 
 describe('gapMs', () => {
-  it('is within 25-45s', () => {
-    expect(gapMs(() => 0)).toBe(25_000);
-    expect(gapMs(() => 0.999999)).toBeLessThanOrEqual(45_000);
+  it('is within 12-25s', () => {
+    expect(gapMs(() => 0)).toBe(12_000);
+    expect(gapMs(() => 0.999999)).toBeLessThanOrEqual(25_000);
     for (let i = 0; i < 100; i++) {
       const g = gapMs();
-      expect(g).toBeGreaterThanOrEqual(25_000);
-      expect(g).toBeLessThanOrEqual(45_000);
+      expect(g).toBeGreaterThanOrEqual(12_000);
+      expect(g).toBeLessThanOrEqual(25_000);
     }
   });
 });
 
 describe('batchSize', () => {
   const base = { cap: 1000, remainingDaily: 1000, sentLastHour: 0, perMinuteRemaining: 30, queued: 500 };
-  it('paces ~100/hr in 5 min ticks (<= ~9)', () => {
+  it('paces ~167/hr in 5 min ticks (about 14)', () => {
     const n = batchSize(base);
-    expect(n).toBeGreaterThanOrEqual(7);
-    expect(n).toBeLessThanOrEqual(9);
+    expect(n).toBeGreaterThanOrEqual(13);
+    expect(n).toBeLessThanOrEqual(15);
   });
   it('stops when the hourly budget is used', () => {
-    expect(batchSize({ ...base, sentLastHour: 100 })).toBe(0);
-    expect(batchSize({ ...base, sentLastHour: 97 })).toBe(3);
+    expect(batchSize({ ...base, sentLastHour: 167 })).toBe(0);
+    expect(batchSize({ ...base, sentLastHour: 164 })).toBe(3);
   });
   it('respects queue, daily remaining, per-minute', () => {
     expect(batchSize({ ...base, queued: 2 })).toBe(2);

@@ -10,7 +10,7 @@ Next.js (App Router) · TypeScript · Tailwind · Prisma + Supabase Postgres · 
 
 - **Admins** import a contacts CSV, invite organizers, auto-assign contacts, and edit the email template.
 - **Organizers** sign in, click **Connect Gmail** once, then **Start sending**. That is it.
-- A cron hits `/api/cron/send` every 5 minutes. Each organizer inside their 8am-6pm window sends a small batch (about 100/hour, 25-45s random gaps).
+- A cron hits `/api/cron/send` every 5 minutes. Each organizer inside their 8am-6pm window sends a small batch (about 165/hour for a 1,000/day cap, 12-25s random gaps, so about 14 per run).
 - A cron hits `/api/cron/track` every 30 minutes to detect replies, bounces and opt-outs.
 - No open or click tracking. Every email gets a footer with a "reply STOP" line and the mailing address set in the template.
 
@@ -109,7 +109,7 @@ The send route can run up to ~4 minutes per call (`maxDuration = 300`), which ne
 | Daily cap per organizer | 1,000 default, hard max 1,500, rolling 24h window |
 | Ramp (admin toggle) | First 24h after first send: 300, then full cap |
 | Window | 8am-6pm in the organizer's timezone |
-| Pace | About cap/10 per hour, 25-45s gaps, never above 30/min. Each 5-minute tick fits about 8 sends per organizer, so real throughput tops out near 950/day; caps above that are not reachable with 25-45s gaps |
+| Pace | The daily cap is spread over about 6 hours of the 10-hour window (cap/6 per hour, 165/hr at 1,000), 12-25s random gaps, never above 30/min. Each 5-minute run fits about 14 sends per organizer |
 | Recipients | One per message, never BCC or CC |
 
 What each auto-pause means (all show on the admin dashboard as alerts):
