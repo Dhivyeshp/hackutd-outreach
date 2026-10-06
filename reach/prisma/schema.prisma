@@ -32,6 +32,7 @@ enum ContactStatus {
   OPTED_OUT
   DUPLICATE
   INVALID
+  SKIPPED
 }
 
 model User {
@@ -51,6 +52,7 @@ model User {
   bounceCheckSince      DateTime?
   pausedByAdmin         Boolean   @default(false)
   disabled              Boolean   @default(false)
+  senderTitle           String    @default("Organizer")
   createdAt             DateTime  @default(now())
 
   contacts Contact[]
@@ -87,6 +89,7 @@ model Campaign {
   subject        String  @default("Partnering with HackUTD")
   body           String  @default("Hi {{first_name}},\n\nI'm {{sender_name}} from HackUTD, UT Dallas's student hackathon. We'd love to have {{uni}} students and faculty involved.\n\nWould you be open to a quick chat?\n\nThanks,\n{{sender_name}}")
   active         Boolean @default(true)
+  htmlBody       String?
   mailingAddress String  @default("HackUTD, The University of Texas at Dallas, 800 W Campbell Rd, Richardson, TX 75080")
   allowNonValid  Boolean @default(false)
   maxPerOrganizer Int    @default(1300)
