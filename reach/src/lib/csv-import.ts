@@ -24,7 +24,7 @@ const ALIASES: Record<ContactField, string[]> = {
   email: ['email', 'e-mail', 'email address', 'mail'],
   name: ['name', 'full name', 'professor', 'faculty'],
   title: ['title', 'position', 'role'],
-  department: ['department', 'dept', 'division'],
+  department: ['department', 'dept', 'dept_hint', 'division'],
   uni: ['uni', 'university', 'school', 'institution'],
   verification: ['verification', 'status', 'result', 'verify', 'zb status', 'neverbounce result'],
 };
