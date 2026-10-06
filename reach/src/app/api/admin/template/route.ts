@@ -8,6 +8,7 @@ import { lintTemplate } from '@/lib/linter';
 const update = z.object({
   subject: z.string().min(1).max(200),
   body: z.string().min(1).max(10_000),
+  htmlBody: z.string().max(200_000).nullable(),
   mailingAddress: z.string().min(5).max(300),
   allowNonValid: z.boolean(),
   active: z.boolean(),

@@ -18,6 +18,7 @@ const patch = z.object({
   role: z.enum(['ADMIN', 'ORGANIZER']).optional(),
   paused: z.boolean().optional(),
   disabled: z.boolean().optional(),
+  senderTitle: z.string().trim().min(1).max(80).optional(),
   rampEnabled: z.boolean().optional(),
   dailyCap: z.number().int().min(0).max(HARD_MAX_DAILY).optional(),
   timezone: z.string().max(64).optional(),
@@ -40,6 +41,7 @@ export const GET = handle(async () => {
       paused: u.paused,
       pausedReason: u.pausedReason,
       disabled: u.disabled,
+      senderTitle: u.senderTitle,
       stats: stats.get(u.id),
     })),
   );

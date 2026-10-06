@@ -1,5 +1,6 @@
 import type { Campaign, Contact, User } from '@prisma/client';
 import { composeEmail } from './compose';
+import { senderOf } from './sender';
 import { prisma } from './db';
 import { GmailClient, GmailError } from './gmail';
 import { DAY_MS, effectiveDailyCap, perMinuteRemaining, remainingToday } from './limits';
@@ -213,7 +214,7 @@ export async function sendOne(user: User, contact: Contact, campaign: Campaign, 
     return 'skip';
   }
 
-  const email = composeEmail(campaign, contact, user.name || user.email);
+  const email = composeEmail(campaign, contact, senderOf(user));
   const raw = toBase64Url(
     buildMime({ fromName: user.name || user.email, fromEmail: user.email, to: contact.email, subject: email.subject, text: email.text, html: email.html }),
   );
@@ -320,7 +321,7 @@ export async function sendTestEmail(user: User): Promise<void> {
 
   const campaign = await getCampaign();
   const sample = await prisma.contact.findFirst({ where: { assignedToId: user.id }, orderBy: { createdAt: 'asc' } });
-  const email = composeEmail(campaign, sample ?? { name: 'Jane Smith', uni: 'Example University' }, user.name || user.email);
+  const email = composeEmail(campaign, sample ?? { name: 'Jane Smith', uni: 'Example University' }, senderOf(user));
   const raw = toBase64Url(
     buildMime({
       fromName: user.name || user.email,

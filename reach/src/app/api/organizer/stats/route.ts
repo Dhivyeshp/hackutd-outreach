@@ -1,5 +1,6 @@
 import { requireUser } from '@/lib/auth';
 import { composeEmail } from '@/lib/compose';
+import { senderOf } from '@/lib/sender';
 import { prisma } from '@/lib/db';
 import { getCampaign } from '@/lib/engine';
 import { handle, ok } from '@/lib/http';
@@ -19,7 +20,7 @@ export const GET = handle(async () => {
     }),
   ]);
   const preview = next
-    ? { to: next.email, ...composeEmail(campaign, next, user.name || user.email) }
+    ? { to: next.email, ...composeEmail(campaign, next, senderOf(user)) }
     : null;
   return ok({
     user: { name: user.name, email: user.email, role: user.role, gmailConnected: user.gmailConnected, paused: user.paused, pausedReason: user.pausedReason },
