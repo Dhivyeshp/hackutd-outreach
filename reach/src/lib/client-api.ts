@@ -4,7 +4,7 @@ interface Envelope<T> {
   error?: string;
 }
 
-/** Call a Reach API route and unwrap the {success,data,error} envelope. Throws on failure. */
+/** Call a SPARK API route and unwrap the {success,data,error} envelope. Throws on failure. */
 export async function api<T>(url: string, init?: { method?: string; body?: unknown }): Promise<T> {
   const res = await fetch(url, {
     method: init?.method ?? (init?.body ? 'POST' : 'GET'),

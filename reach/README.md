@@ -1,4 +1,6 @@
-# Reach
+# SPARK
+
+**S**ponsor & **P**rofessor **A**utomated **R**each **K**it
 
 HackUTD organizers send personalized outreach emails to their assigned contacts from their **own** @acmutd.co Gmail, in one or two clicks.
 

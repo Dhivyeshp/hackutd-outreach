@@ -26,7 +26,7 @@ export function buildMime(m: MimeInput): string {
   if (/[,;\s]/.test(m.to.trim())) throw new Error('Exactly one recipient is allowed');
 
   const display = isAscii(m.fromName) ? `"${m.fromName.replace(/(["\\])/g, '\\$1')}"` : encodedWord(m.fromName);
-  const boundary = `reach_${randomBytes(12).toString('hex')}`;
+  const boundary = `spark_${randomBytes(12).toString('hex')}`;
   const part = (type: string, body: string) =>
     [`--${boundary}`, `Content-Type: ${type}; charset=UTF-8`, 'Content-Transfer-Encoding: base64', '', wrap64(body)].join(CRLF);
 

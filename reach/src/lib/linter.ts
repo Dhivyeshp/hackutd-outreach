@@ -28,7 +28,7 @@ export function lintTemplate({ subject, body }: { subject: string; body: string 
     warnings.push({ code: 'spam_words', message: 'Contains spammy words (e.g. free, guaranteed, act now).' });
   }
   if (/\battach(?:ed|ment|ments|ing)?\b/i.test(body)) {
-    warnings.push({ code: 'attachment', message: 'Reach cannot send attachments. Link to a page instead.' });
+    warnings.push({ code: 'attachment', message: 'SPARK cannot send attachments. Link to a page instead.' });
   }
   return warnings;
 }
