@@ -1,5 +1,5 @@
 const WINDOW_START_HOUR = 8;
-const WINDOW_END_HOUR = 18;
+const WINDOW_END_HOUR = 19;
 /** The daily cap is spread over this many hours (of the 10-hour window), i.e. cap/6 per hour. */
 const PACE_HOURS = 6;
 export const GAP_MIN_MS = 12_000;
@@ -19,7 +19,7 @@ function localHour(now: Date, timeZone: string): number {
   return Number(parts.find((p) => p.type === 'hour')?.value ?? 0) % 24;
 }
 
-/** True between 8:00 and 17:59 in the organizer's local time. */
+/** True between 8:00 and 18:59 in the organizer's local time. */
 export function inSendWindow(now: Date, timeZone: string): boolean {
   const h = localHour(now, timeZone);
   return h >= WINDOW_START_HOUR && h < WINDOW_END_HOUR;

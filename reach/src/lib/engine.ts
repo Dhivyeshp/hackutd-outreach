@@ -117,7 +117,7 @@ export async function runSendTick(now = new Date()): Promise<TickSummary> {
   }
 }
 
-/** Re-check pause flags and the send window between sends, so a pause or 6pm takes effect mid-batch. */
+/** Re-check pause flags and the send window between sends, so a pause or the end of the window takes effect mid-batch. */
 async function mayContinue(user: User): Promise<boolean> {
   const [fresh, global] = await Promise.all([
     prisma.user.findUnique({ where: { id: user.id }, select: { paused: true, disabled: true } }),

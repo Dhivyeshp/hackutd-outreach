@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { batchSize, gapMs, inSendWindow, planGaps } from './scheduler';
 
 describe('inSendWindow', () => {
-  it('is 8am-6pm in the organizer timezone', () => {
+  it('is 8am-7pm in the organizer timezone', () => {
     // 15:00Z = 9am CST(-6)? In March 10 2026 Dallas is CDT(-5) => 10:00
     expect(inSendWindow(new Date('2026-03-10T15:00:00Z'), 'America/Chicago')).toBe(true);
     expect(inSendWindow(new Date('2026-03-10T12:59:00Z'), 'America/Chicago')).toBe(false); // 7:59
     expect(inSendWindow(new Date('2026-03-10T13:00:00Z'), 'America/Chicago')).toBe(true); // 8:00
-    expect(inSendWindow(new Date('2026-03-10T22:59:00Z'), 'America/Chicago')).toBe(true); // 17:59
-    expect(inSendWindow(new Date('2026-03-10T23:00:00Z'), 'America/Chicago')).toBe(false); // 18:00
+    expect(inSendWindow(new Date('2026-03-10T23:59:00Z'), 'America/Chicago')).toBe(true); // 18:59
+    expect(inSendWindow(new Date('2026-03-11T00:00:00Z'), 'America/Chicago')).toBe(false); // 19:00
   });
   it('falls back to Chicago on a bad timezone', () => {
     expect(inSendWindow(new Date('2026-03-10T15:00:00Z'), 'Not/AZone')).toBe(true);
