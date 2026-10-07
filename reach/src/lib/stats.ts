@@ -1,5 +1,6 @@
 import type { ContactStatus, User } from '@prisma/client';
 import { prisma } from './db';
+import type { Kind } from './kind';
 import { DAY_MS, effectiveDailyCap, remainingToday } from './limits';
 
 export interface OrganizerStats {
@@ -23,12 +24,12 @@ function blank(userId: string): OrganizerStats {
 }
 
 /** Stats for every organizer in two grouped queries (no N+1). */
-export async function allOrganizerStats(userIds: string[], now = new Date()): Promise<Map<string, OrganizerStats>> {
+export async function allOrganizerStats(userIds: string[], now = new Date(), kind?: Kind): Promise<Map<string, OrganizerStats>> {
   const [byStatus, last24] = await Promise.all([
-    prisma.contact.groupBy({ by: ['assignedToId', 'status'], where: { assignedToId: { in: userIds } }, _count: { _all: true } }),
+    prisma.contact.groupBy({ by: ['assignedToId', 'status'], where: { assignedToId: { in: userIds }, ...(kind ? { kind } : {}) }, _count: { _all: true } }),
     prisma.sendLog.groupBy({
       by: ['userId'],
-      where: { userId: { in: userIds }, result: 'ok', sentAt: { gt: new Date(now.getTime() - DAY_MS) } },
+      where: { userId: { in: userIds }, result: 'ok', sentAt: { gt: new Date(now.getTime() - DAY_MS) }, ...(kind ? { contact: { kind } } : {}) },
       _count: { _all: true },
     }),
   ]);

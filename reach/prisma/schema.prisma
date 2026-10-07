@@ -21,6 +21,11 @@ enum Verification {
   UNKNOWN
 }
 
+enum ContactKind {
+  FACULTY
+  SPONSOR
+}
+
 enum ContactStatus {
   PENDING
   QUEUED
@@ -52,6 +57,7 @@ model User {
   bounceCheckSince      DateTime?
   pausedByAdmin         Boolean   @default(false)
   disabled              Boolean   @default(false)
+  pausedKinds           ContactKind[] @default([])
   senderTitle           String    @default("Organizer")
   createdAt             DateTime  @default(now())
 
@@ -67,6 +73,11 @@ model Contact {
   department     String        @default("")
   uni            String        @default("")
   verification   Verification  @default(UNKNOWN)
+  kind           ContactKind   @default(FACULTY)
+  company        String        @default("")
+  website        String        @default("")
+  industry       String        @default("")
+  location       String        @default("")
   assignedToId   String?
   assignedTo     User?         @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
   status         ContactStatus @default(PENDING)
@@ -82,6 +93,7 @@ model Contact {
 
   @@index([assignedToId, status])
   @@index([status, sentAt])
+  @@index([kind, status])
 }
 
 model Campaign {

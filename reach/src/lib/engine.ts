@@ -1,5 +1,6 @@
 import type { Campaign, Contact, User } from '@prisma/client';
 import { composeEmail } from './compose';
+import { campaignIdFor, KINDS, type Kind } from './kind';
 import { senderOf } from './sender';
 import { prisma } from './db';
 import { GmailClient, GmailError } from './gmail';
@@ -38,8 +39,35 @@ export interface TickSummary {
   users: UserTick[];
 }
 
-export async function getCampaign(): Promise<Campaign> {
-  return prisma.campaign.upsert({ where: { id: 'default' }, update: {}, create: { id: 'default' } });
+const SPONSOR_DEFAULTS = {
+  subject: 'Partnering with HackUTD',
+  body: [
+    '{{greeting}},',
+    '',
+    "I'm {{sender_name}} from HackUTD, UT Dallas's student hackathon. We'd love to explore a partnership with {{company}}.",
+    '',
+    'Would you be open to a quick chat?',
+    '',
+    'Thanks,',
+    '{{sender_name}}',
+  ].join('\n'),
+  // Sponsor lists are curated by hand, so they do not need a verification column to be sent.
+  allowNonValid: true,
+};
+
+/** Each kind of outreach (faculty, sponsors) has its own template row. */
+export async function getCampaign(kind: Kind = 'FACULTY'): Promise<Campaign> {
+  const id = campaignIdFor(kind);
+  return prisma.campaign.upsert({
+    where: { id },
+    update: {},
+    create: kind === 'SPONSOR' ? { id, ...SPONSOR_DEFAULTS } : { id },
+  });
+}
+
+async function loadCampaigns(): Promise<Record<Kind, Campaign>> {
+  const [FACULTY, SPONSOR] = await Promise.all([getCampaign('FACULTY'), getCampaign('SPONSOR')]);
+  return { FACULTY, SPONSOR };
 }
 
 async function pauseUser(user: User, reason: string, until?: Date): Promise<void> {
@@ -84,8 +112,9 @@ export async function runSendTick(now = new Date()): Promise<TickSummary> {
       await pauseEveryone('Total bounce rate above 3% over the last 7 days', 'bounce');
       return { skipped: 'global_bounce', users: [] };
     }
-    const campaign = await getCampaign();
-    if (!campaign.active) return { skipped: 'campaign_inactive', users: [] };
+    const campaigns = await loadCampaigns();
+    const activeKinds = KINDS.filter((k) => campaigns[k].active);
+    if (!activeKinds.length) return { skipped: 'campaign_inactive', users: [] };
 
     await flagStaleSending(now);
     await prisma.user.updateMany({
@@ -99,12 +128,12 @@ export async function runSendTick(now = new Date()): Promise<TickSummary> {
         paused: false,
         disabled: false,
         encryptedRefreshToken: { not: null },
-        contacts: { some: { status: 'QUEUED' } },
+        contacts: { some: { status: 'QUEUED', kind: { in: activeKinds } } },
       },
     });
     const results = await Promise.all(
       users.map((u) =>
-        sendForUser(u, campaign, now).catch((err: unknown): UserTick => ({
+        sendForUser(u, campaigns, activeKinds, now).catch((err: unknown): UserTick => ({
           userId: u.id,
           sent: 0,
           note: `error: ${err instanceof Error ? err.message : String(err)}`,
@@ -118,12 +147,12 @@ export async function runSendTick(now = new Date()): Promise<TickSummary> {
 }
 
 /** Re-check pause flags and the send window between sends, so a pause or the end of the window takes effect mid-batch. */
-async function mayContinue(user: User): Promise<boolean> {
+async function mayContinue(user: User, kind: Kind): Promise<boolean> {
   const [fresh, global] = await Promise.all([
-    prisma.user.findUnique({ where: { id: user.id }, select: { paused: true, disabled: true } }),
+    prisma.user.findUnique({ where: { id: user.id }, select: { paused: true, disabled: true, pausedKinds: true } }),
     getGlobalPause(),
   ]);
-  return !!fresh && !fresh.paused && !fresh.disabled && !global.paused && inSendWindow(new Date(), user.timezone);
+  return !!fresh && !fresh.paused && !fresh.disabled && !fresh.pausedKinds.includes(kind) && !global.paused && inSendWindow(new Date(), user.timezone);
 }
 
 async function userBouncePaused(user: User): Promise<boolean> {
@@ -141,7 +170,10 @@ async function userBouncePaused(user: User): Promise<boolean> {
   return true;
 }
 
-async function sendForUser(user: User, campaign: Campaign, now: Date): Promise<UserTick> {
+async function sendForUser(user: User, campaigns: Record<Kind, Campaign>, campaignKinds: Kind[], now: Date): Promise<UserTick> {
+  // Faculty and sponsors can each be paused on their own, so only send the kinds this person left running.
+  const activeKinds = campaignKinds.filter((k) => !user.pausedKinds.includes(k));
+  if (!activeKinds.length) return { userId: user.id, sent: 0, note: 'paused: all kinds' };
   if (!inSendWindow(now, user.timezone)) return { userId: user.id, sent: 0, note: 'outside window' };
   if (await userBouncePaused(user)) return { userId: user.id, sent: 0, note: 'paused: bounce rate' };
 
@@ -152,7 +184,7 @@ async function sendForUser(user: User, campaign: Campaign, now: Date): Promise<U
   const dates = logs.map((l) => l.sentAt);
   const cap = effectiveDailyCap({ dailyCap: user.dailyCap, rampEnabled: user.rampEnabled, firstSendAt: user.firstSendAt, now });
   const [queued, inFlight] = await Promise.all([
-    prisma.contact.count({ where: { assignedToId: user.id, status: 'QUEUED' } }),
+    prisma.contact.count({ where: { assignedToId: user.id, status: 'QUEUED', kind: { in: activeKinds } } }),
     prisma.contact.count({ where: { assignedToId: user.id, status: 'SENDING' } }),
   ]);
   const n = batchSize({
@@ -165,7 +197,7 @@ async function sendForUser(user: User, campaign: Campaign, now: Date): Promise<U
   if (n === 0) return { userId: user.id, sent: 0, note: 'no allowance' };
 
   const batch = await prisma.contact.findMany({
-    where: { assignedToId: user.id, status: 'QUEUED' },
+    where: { assignedToId: user.id, status: 'QUEUED', kind: { in: activeKinds } },
     orderBy: { createdAt: 'asc' },
     take: n,
   });
@@ -178,11 +210,11 @@ async function sendForUser(user: User, campaign: Campaign, now: Date): Promise<U
   try {
     for (let i = 0; i < gaps.length; i++) {
       if (gaps[i]) await sleep(gaps[i]);
-      if (i > 0 && !(await mayContinue(user))) {
+      if (i > 0 && !(await mayContinue(user, batch[i].kind))) {
         note = 'stopped: paused or window closed';
         break;
       }
-      const outcome = await sendOne(user, batch[i], campaign, gmail, dates);
+      const outcome = await sendOne(user, batch[i], campaigns[batch[i].kind], gmail, dates);
       errors = outcome === 'error' ? errors + 1 : 0;
       if (outcome === 'sent') sent++;
       if (outcome === 'stop' || errors >= MAX_CONSECUTIVE_ERRORS) {
@@ -299,29 +331,37 @@ async function handleSendError(user: User, contact: Contact, err: unknown, recen
   }
 }
 
-/** "Start sending": queue this organizer's pending contacts and clear their own (not admin/safety) pause. */
-export async function startSending(user: User): Promise<{ queued: number }> {
-  const campaign = await getCampaign();
+/** Pause or resume one kind (faculty or sponsors) for one organizer without touching the other. */
+export async function setKindPaused(user: User, kind: Kind, paused: boolean): Promise<void> {
+  const rest = user.pausedKinds.filter((k) => k !== kind);
+  await prisma.user.update({ where: { id: user.id }, data: { pausedKinds: paused ? [...rest, kind] : rest } });
+}
+
+/** "Start sending": queue this organizer's pending contacts of one kind and clear their own (not admin/safety) pause. */
+export async function startSending(user: User, kind: Kind = 'FACULTY'): Promise<{ queued: number }> {
+  const campaign = await getCampaign(kind);
   const verificationFilter = campaign.allowNonValid ? { not: 'INVALID' as const } : ('VALID' as const);
   const res = await prisma.contact.updateMany({
-    where: { assignedToId: user.id, status: 'PENDING', verification: verificationFilter },
+    where: { assignedToId: user.id, status: 'PENDING', kind, verification: verificationFilter },
     data: { status: 'QUEUED' },
   });
   if (user.paused && user.pausedReason === 'manual' && !user.pausedByAdmin) {
     await prisma.user.update({ where: { id: user.id }, data: { paused: false, pausedReason: null, pausedUntil: null } });
   }
+  await setKindPaused(user, kind, false);
   return { queued: res.count };
 }
 
 /** Send a one-off preview to the organizer's own address. Not logged as outreach; counts toward quota. */
-export async function sendTestEmail(user: User): Promise<void> {
+export async function sendTestEmail(user: User, kind: Kind = 'FACULTY'): Promise<void> {
   if (!user.encryptedRefreshToken) throw new GmailError('auth', 'Gmail is not connected');
   if ((await getGlobalPause()).paused) throw new GmailError('other', 'All sending is paused by an admin');
   if (!(await allowTestSend(user.id))) throw new GmailError('rate_limit', 'Test limit reached (5 per hour)');
 
-  const campaign = await getCampaign();
-  const sample = await prisma.contact.findFirst({ where: { assignedToId: user.id }, orderBy: { createdAt: 'asc' } });
-  const email = composeEmail(campaign, sample ?? { name: 'Jane Smith', uni: 'Example University' }, senderOf(user));
+  const campaign = await getCampaign(kind);
+  const sample = await prisma.contact.findFirst({ where: { assignedToId: user.id, kind }, orderBy: { createdAt: 'asc' } });
+  const fallback = kind === 'SPONSOR' ? { name: '', company: 'Example Corp', industry: 'Software' } : { name: 'Jane Smith', uni: 'Example University' };
+  const email = composeEmail(campaign, sample ?? fallback, senderOf(user));
   const raw = toBase64Url(
     buildMime({
       fromName: user.name || user.email,

@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import type { ReactNode } from 'react';
 import { Brand } from './Brand';
+import { KindProvider, KindSwitch } from './KindContext';
 
 export interface NavItem {
   href: string;
@@ -20,9 +21,12 @@ interface ShellProps {
 
 export function Shell({ title, userName, nav, children }: ShellProps) {
   const pathname = usePathname();
+  // Everything except the team list is split into faculty vs sponsors.
+  const showKindSwitch = !pathname.startsWith('/admin/organizers');
   const isActive = (href: string) => (href === '/' || href === '/admin' ? pathname === href : pathname.startsWith(href));
 
   return (
+    <KindProvider>
     <div className="relative min-h-screen text-zinc-100 md:flex">
 
       <aside className="sticky top-0 z-10 hidden h-screen w-64 shrink-0 flex-col border-r border-white/[0.06] bg-black/25 p-4 backdrop-blur-xl md:flex">
@@ -78,9 +82,13 @@ export function Shell({ title, userName, nav, children }: ShellProps) {
       </nav>
 
       <main className="relative mx-auto w-full min-w-0 max-w-6xl flex-1 space-y-8 px-4 py-6 md:px-10 md:py-10">
-        <h1 className="animate-fade-up text-2xl font-semibold tracking-tight md:text-3xl">{title}</h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="animate-fade-up text-2xl font-semibold tracking-tight md:text-3xl">{title}</h1>
+          {showKindSwitch && <KindSwitch />}
+        </div>
         {children}
       </main>
     </div>
+    </KindProvider>
   );
 }

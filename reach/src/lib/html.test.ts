@@ -33,6 +33,20 @@ describe('renderHtmlTemplate', () => {
   });
 });
 
+describe('sponsor greetings', () => {
+  const sender = { name: 'Sam' };
+  it('greets the company team when there is no contact person', () => {
+    expect(renderHtmlTemplate('{{greeting}},', { company: 'AlgoPear', name: '' }, sender)).toBe('Hi AlgoPear team,');
+    expect(renderHtmlTemplate('Hi {{first_name}}', { company: 'AlgoPear' }, sender)).toBe('Hi there');
+  });
+  it('greets a named sponsor contact by first name', () => {
+    expect(renderHtmlTemplate('{{greeting}},', { company: 'Calyx', name: 'Jane Roe' }, sender)).toBe('Hi Jane,');
+  });
+  it('fills and escapes company fields', () => {
+    expect(renderHtmlTemplate('{{company}} / {{industry}}', { company: 'A&B', industry: '<b>x</b>' }, sender)).toBe('A&amp;B / &lt;b&gt;x&lt;/b&gt;');
+  });
+});
+
 describe('htmlToText', () => {
   const text = htmlToText(tpl);
   it('drops styles and tags, decodes entities', () => {

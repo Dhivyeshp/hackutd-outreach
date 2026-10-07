@@ -56,3 +56,28 @@ describe('importRows', () => {
     expect(() => importRows(rows, { ...mapping, email: undefined }, new Set())).toThrow(/email/i);
   });
 });
+
+describe('sponsor imports', () => {
+  const sponsorCsv = `list,name,website,location,industry,best_contact_type,best_email,other_emails
+Dallas,AlgoPear,https://www.algopear.com/,Dallas,AI trading platform,email: partnerships,partnerships@algopear.com,support@algopear.com (general)
+Dallas,Calyx,https://www.calyxsoftware.com/,"DFW office; San Jose, CA",Loan software,email: partnerships,Vendorpartners@calyxsoftware.com,sales@calyxsoftware.com
+Dallas,NoEmailCo,https://x.com/,Dallas,Misc,form only,,
+Dallas,Dup,https://d.com/,Dallas,Misc,email,partnerships@algopear.com,`;
+  const { headers, rows } = parseCsv(sponsorCsv);
+
+  it('maps best_email to email and name to company', () => {
+    const m = guessMapping(headers, 'SPONSOR');
+    expect(m).toMatchObject({ email: 'best_email', company: 'name', website: 'website', industry: 'industry', location: 'location' });
+    expect(m.name).toBeUndefined();
+  });
+  it('imports companies as sponsor contacts, valid by default, skipping blanks and dupes', () => {
+    const r = importRows(rows, guessMapping(headers, 'SPONSOR'), new Set(), 'SPONSOR');
+    expect(r.contacts.map((c) => c.email)).toEqual(['partnerships@algopear.com', 'vendorpartners@calyxsoftware.com']);
+    expect(r.contacts[0]).toMatchObject({ kind: 'SPONSOR', company: 'AlgoPear', industry: 'AI trading platform', name: '', verification: 'valid', status: 'pending' });
+    expect(r.summary).toMatchObject({ total: 4, imported: 2, duplicates: 1, invalidSyntax: 1 });
+  });
+  it('faculty imports stay unknown without a verification column', () => {
+    const { rows: fr, headers: fh } = parseCsv('Name,Email\nJane Smith,jane@x.edu');
+    expect(importRows(fr, guessMapping(fh), new Set()).contacts[0]).toMatchObject({ kind: 'FACULTY', verification: 'unknown' });
+  });
+});

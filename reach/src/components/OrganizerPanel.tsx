@@ -4,11 +4,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from '@/lib/client-api';
 import Link from 'next/link';
 import { EmailPreview } from './EmailPreview';
+import { KIND_LABEL, type Kind } from '@/lib/kind';
+import { useKind } from './KindContext';
 import { ConnectGmailButton } from './SignInButton';
 import { Badge, Button, Card, Notice, Progress, Stat } from './ui';
 
 interface Data {
-  user: { name: string; email: string; role: string; gmailConnected: boolean; paused: boolean; pausedReason: string | null };
+  user: { name: string; email: string; role: string; gmailConnected: boolean; paused: boolean; pausedReason: string | null; pausedKinds: Kind[] };
   stats: { assigned: number; pending: number; queued: number; sent: number; replied: number; bounced: number; optedOut: number; sentLast24h: number };
   limits: { cap: number; remaining: number };
   globalPaused: string | null;
@@ -16,17 +18,18 @@ interface Data {
 }
 
 export function OrganizerPanel() {
+  const { kind } = useKind();
   const [data, setData] = useState<Data | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ tone: 'green' | 'red'; text: string } | null>(null);
 
   const load = useCallback(async () => {
     try {
-      setData(await api<Data>('/api/organizer/stats'));
+      setData(await api<Data>(`/api/organizer/stats?kind=${kind}`));
     } catch (e) {
       setMsg({ tone: 'red', text: (e as Error).message });
     }
-  }, []);
+  }, [kind]);
 
   useEffect(() => {
     void load();
@@ -34,13 +37,13 @@ export function OrganizerPanel() {
     return () => clearInterval(t);
   }, [load]);
 
-  async function act(action: 'test' | 'start' | 'pause') {
+  async function act(action: 'test' | 'start' | 'pause' | 'resume') {
     setBusy(action);
     setMsg(null);
     try {
-      const res = await api<{ queued?: number; sentTo?: string }>('/api/organizer/actions', { body: { action } });
+      const res = await api<{ queued?: number; sentTo?: string }>('/api/organizer/actions', { body: { action, kind } });
       const text =
-        action === 'test' ? `Test sent to ${res.sentTo}. Check your inbox.` : action === 'start' ? `Sending started. ${res.queued} contacts queued.` : 'Paused.';
+        action === 'test' ? `Test sent to ${res.sentTo}. Check your inbox.` : action === 'start' ? `Sending started. ${res.queued} contacts queued.` : action === 'pause' ? `${KIND_LABEL[kind]} paused. ${KIND_LABEL[kind] === 'Faculty' ? 'Sponsors' : 'Faculty'} keep sending.` : `${KIND_LABEL[kind]} resumed.`;
       setMsg({ tone: 'green', text });
       await load();
     } catch (e) {
@@ -63,7 +66,8 @@ export function OrganizerPanel() {
     );
   }
 
-  const status = user.paused ? <Badge tone="amber">Paused{user.pausedReason ? `: ${user.pausedReason}` : ''}</Badge> : stats.queued ? <Badge tone="green" live>Sending</Badge> : <Badge>Idle</Badge>;
+  const kindPaused = user.pausedKinds.includes(kind);
+  const status = user.paused ? <Badge tone="amber">Paused{user.pausedReason ? `: ${user.pausedReason}` : ''}</Badge> : kindPaused ? <Badge tone="amber">{KIND_LABEL[kind]} paused</Badge> : stats.queued ? <Badge tone="green" live>Sending</Badge> : <Badge>Idle</Badge>;
 
   return (
     <div className="space-y-5">
@@ -122,9 +126,15 @@ export function OrganizerPanel() {
           <Button disabled={busy !== null || !stats.pending && !user.paused} onClick={() => act('start')}>
             {busy === 'start' ? 'Starting…' : user.paused ? 'Resume sending' : 'Start sending'}
           </Button>
-          <Button variant="danger" disabled={busy !== null || user.paused} onClick={() => act('pause')}>
-            Pause
-          </Button>
+          {kindPaused ? (
+            <Button variant="secondary" disabled={busy !== null} onClick={() => act('resume')}>
+              Resume {KIND_LABEL[kind].toLowerCase()}
+            </Button>
+          ) : (
+            <Button variant="danger" disabled={busy !== null || user.paused} onClick={() => act('pause')}>
+              Pause {KIND_LABEL[kind].toLowerCase()}
+            </Button>
+          )}
         </div>
         <p className="text-xs text-zinc-500">Emails go out 8am–7pm Central, about 165 an hour, with a short random gap between each.</p>
       </Card>

@@ -5,28 +5,42 @@ export interface TemplateContact {
   title?: string | null;
   department?: string | null;
   uni?: string | null;
+  company?: string | null;
+  industry?: string | null;
+  website?: string | null;
+  location?: string | null;
 }
 
 export interface Sender {
   name: string;
   title?: string | null;
+  email?: string | null;
 }
 
 const DEFAULT_SENDER_TITLE = 'Organizer';
 
 function valuesFor(contact: TemplateContact, sender: Sender): Record<string, string> {
   const n = parseName(contact.name);
+  const company = contact.company?.trim() ?? '';
+  const hasPerson = !!contact.name?.trim();
+  // Sponsor lists often have only a company and a generic address, so greet the team, not "Professor".
+  const sponsor = company !== '';
   return {
     name: n.full,
-    first_name: n.first,
+    first_name: sponsor && !hasPerson ? 'there' : n.first,
     last_name: n.last,
     prof_last_name: n.last,
-    greeting: n.last ? `Hi Professor ${n.last}` : 'Hello',
+    greeting: sponsor ? (hasPerson ? `Hi ${n.first}` : `Hi ${company} team`) : n.last ? `Hi Professor ${n.last}` : 'Hello',
     title: contact.title ?? '',
     department: contact.department ?? '',
     uni: contact.uni ?? '',
+    company,
+    industry: contact.industry ?? '',
+    website: contact.website ?? '',
+    location: contact.location ?? '',
     sender_name: sender.name,
     sender_title: sender.title?.trim() || DEFAULT_SENDER_TITLE,
+    sender_email: sender.email ?? '',
   };
 }
 

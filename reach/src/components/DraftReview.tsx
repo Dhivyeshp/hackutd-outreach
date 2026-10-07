@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '@/lib/client-api';
 import { EmailPreview } from './EmailPreview';
+import { useKind } from './KindContext';
 import { Button, Card, Notice } from './ui';
 
 type View = 'drafts' | 'queued';
@@ -26,6 +27,7 @@ interface Page {
 }
 
 export function DraftReview() {
+  const { kind } = useKind();
   const [view, setView] = useState<View>('drafts');
   const [page, setPage] = useState<Page | null>(null);
   const [busy, setBusy] = useState(false);
@@ -34,11 +36,11 @@ export function DraftReview() {
 
   const load = useCallback(async (v: View) => {
     try {
-      setPage(await api<Page>(`/api/organizer/drafts?view=${v}`));
+      setPage(await api<Page>(`/api/organizer/drafts?view=${v}&kind=${kind}`));
     } catch (e) {
       setError((e as Error).message);
     }
-  }, []);
+  }, [kind]);
   useEffect(() => {
     void load(view);
   }, [load, view]);
@@ -47,7 +49,7 @@ export function DraftReview() {
     setBusy(true);
     setError('');
     try {
-      const r = await api<{ updated: number }>('/api/organizer/drafts', { body });
+      const r = await api<{ updated: number }>('/api/organizer/drafts', { body: { ...body, kind } });
       setMsg(`${r.updated} ${done}`);
       await load(view);
     } catch (e) {

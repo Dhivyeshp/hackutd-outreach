@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Badge, Button, Card, Notice, inputCls } from '@/components/ui';
 import { api } from '@/lib/client-api';
 import { EmailPreview } from '@/components/EmailPreview';
+import { useKind } from '@/components/KindContext';
 import { composeEmail } from '@/lib/compose';
 import { lintTemplate } from '@/lib/linter';
 
@@ -21,25 +22,35 @@ interface Sample {
   title: string;
   department: string;
   uni: string;
+  company?: string;
+  industry?: string;
+  website?: string;
+  location?: string;
   email: string;
 }
 
-const FALLBACK_SAMPLE: Sample = { name: 'Dr. Jane Smith', title: 'Associate Professor', department: 'Computer Science', uni: 'Example University', email: 'jane@example.edu' };
+const FALLBACK_SAMPLES: Record<'FACULTY' | 'SPONSOR', Sample> = {
+  FACULTY: { name: 'Dr. Jane Smith', title: 'Associate Professor', department: 'Computer Science', uni: 'Example University', email: 'jane@example.edu' },
+  SPONSOR: { name: '', title: '', department: '', uni: '', company: 'Example Corp', industry: 'Software', website: 'https://example.com', location: 'Dallas', email: 'partnerships@example.com' },
+};
 
 export default function TemplatePage() {
+  const { kind } = useKind();
   const [c, setC] = useState<Campaign | null>(null);
-  const [sample, setSample] = useState<Sample>(FALLBACK_SAMPLE);
+  const [sample, setSample] = useState<Sample>(FALLBACK_SAMPLES.FACULTY);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    api<{ campaign: Campaign; sample: Sample | null }>('/api/admin/template')
+    setC(null);
+    setError('');
+    api<{ campaign: Campaign; sample: Sample | null }>(`/api/admin/template?kind=${kind}`)
       .then((d) => {
         setC(d.campaign);
-        if (d.sample) setSample(d.sample);
+        setSample(d.sample ?? FALLBACK_SAMPLES[kind]);
       })
       .catch((e: Error) => setError(e.message));
-  }, []);
+  }, [kind]);
 
   const warnings = useMemo(() => (c ? lintTemplate({ subject: c.subject, body: c.htmlBody?.trim() ? c.htmlBody : c.body }) : []), [c]);
   const preview = useMemo(() => (c ? composeEmail(c, sample, { name: 'Your Name', title: 'Organizer' }) : null), [c, sample]);
@@ -48,7 +59,7 @@ export default function TemplatePage() {
     if (!c) return;
     setError('');
     try {
-      await api('/api/admin/template', { method: 'PUT', body: c });
+      await api('/api/admin/template', { method: 'PUT', body: { ...c, kind } });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (e) {
@@ -71,7 +82,7 @@ export default function TemplatePage() {
           <span className="mb-1 block font-medium">Body</span>
           <textarea className={`${inputCls} h-64 font-mono`} value={c.body} onChange={(e) => set('body', e.target.value)} />
           <span className="mt-1 block text-xs text-zinc-500">
-            {'{{name}} {{first_name}} {{last_name}} {{title}} {{department}} {{uni}} {{sender_name}}'}
+            {kind === 'SPONSOR' ? '{{greeting}} {{company}} {{industry}} {{website}} {{location}} {{first_name}} {{sender_name}}' : '{{name}} {{first_name}} {{last_name}} {{title}} {{department}} {{uni}} {{sender_name}}'}
           </span>
         </label>
         <label className="block text-sm">
@@ -83,7 +94,7 @@ export default function TemplatePage() {
             onChange={(e) => set('htmlBody', e.target.value.trim() ? e.target.value : null)}
           />
           <span className="mt-1 block text-xs text-zinc-500">
-            Placeholders: {'{{prof_last_name}} {{sender_name}} {{sender_title}}'} plus the ones above. The STOP opt-out line is added automatically.
+            Placeholders: {kind === 'SPONSOR' ? '{{greeting}} {{company}} {{sender_name}} {{sender_title}}' : '{{prof_last_name}} {{sender_name}} {{sender_title}}'} plus the ones above. The STOP opt-out line is added automatically.
           </span>
         </label>
         <label className="block text-sm">

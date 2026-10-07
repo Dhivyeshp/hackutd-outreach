@@ -3,11 +3,16 @@ import { requireAdmin } from '@/lib/auth';
 import { assignRoundRobin } from '@/lib/assign';
 import { prisma } from '@/lib/db';
 import { getCampaign } from '@/lib/engine';
-import { handle, ok, parseBody } from '@/lib/http';
+import { HttpError, handle, ok, parseBody } from '@/lib/http';
 
 export const maxDuration = 60;
 
-const auto = z.object({ max: z.number().int().min(1).max(5000).optional() });
+const auto = z.object({
+  max: z.number().int().min(1).max(5000).optional(),
+  kind: z.enum(['FACULTY', 'SPONSOR']).default('FACULTY'),
+  // Only these people get contacts. Omit to include every active organizer.
+  userIds: z.array(z.string().min(1)).min(1).max(200).optional(),
+});
 const manual = z.object({
   contactIds: z.array(z.string().min(1)).min(1).max(5000),
   userId: z.string().min(1).nullable(),
@@ -16,20 +21,21 @@ const manual = z.object({
 /** Auto-assign: round-robin unassigned valid contacts across organizers, capped per organizer. */
 export const POST = handle(async (req: Request) => {
   await requireAdmin();
-  const { max } = await parseBody(req, auto);
-  const campaign = await getCampaign();
+  const { max, kind, userIds } = await parseBody(req, auto);
+  const campaign = await getCampaign(kind);
   const cap = max ?? campaign.maxPerOrganizer;
 
-  const organizers = await prisma.user.findMany({ where: { disabled: false }, select: { id: true } });
+  const organizers = await prisma.user.findMany({ where: { disabled: false, ...(userIds ? { id: { in: userIds } } : {}) }, select: { id: true } });
+  if (organizers.length === 0) throw new HttpError(400, 'No active organizers selected');
   const loads = await prisma.contact.groupBy({
     by: ['assignedToId'],
-    where: { assignedToId: { in: organizers.map((o) => o.id) } },
+    where: { assignedToId: { in: organizers.map((o) => o.id) }, kind },
     _count: { _all: true },
   });
   const loadOf = new Map(loads.map((l) => [l.assignedToId, l._count._all]));
 
   const unassigned = await prisma.contact.findMany({
-    where: { assignedToId: null, status: 'PENDING', verification: campaign.allowNonValid ? { not: 'INVALID' } : 'VALID' },
+    where: { assignedToId: null, status: 'PENDING', kind, verification: campaign.allowNonValid ? { not: 'INVALID' } : 'VALID' },
     select: { id: true },
     orderBy: { createdAt: 'asc' },
   });

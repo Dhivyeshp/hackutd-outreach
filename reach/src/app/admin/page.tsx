@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Badge, Button, Card, Notice } from '@/components/ui';
+import { useKind } from '@/components/KindContext';
 import { api } from '@/lib/client-api';
 
 interface OrgStats {
@@ -23,16 +24,17 @@ interface Data {
 }
 
 export default function AdminDashboard() {
+  const { kind } = useKind();
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
     try {
-      setData(await api<Data>('/api/admin/stats'));
+      setData(await api<Data>(`/api/admin/stats?kind=${kind}`));
     } catch (e) {
       setError((e as Error).message);
     }
-  }, []);
+  }, [kind]);
 
   useEffect(() => {
     void load();
