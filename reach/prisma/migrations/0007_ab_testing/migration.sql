@@ -1,0 +1,8 @@
+ALTER TABLE "Campaign"
+  ADD COLUMN "abEnabled" BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN "abPercentB" INTEGER NOT NULL DEFAULT 50,
+  ADD COLUMN "bSubject" TEXT,
+  ADD COLUMN "bBody" TEXT,
+  ADD COLUMN "bHtmlBody" TEXT;
+
+ALTER TABLE "Contact" ADD COLUMN "variant" TEXT;

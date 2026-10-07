@@ -1,0 +1,19 @@
+Subject: Sponsoring HackUTD 2026: Zero Day
+
+{{greeting}},
+
+I'm {{sender_name}}, {{sender_title}} at HackUTD, and I'm reaching out to see if {{company}} would be interested in sponsoring HackUTD 2026: Zero Day, happening November 7-8 at The University of Texas at Dallas.
+
+HackUTD is North America's largest 24-hour university hackathon. Last year, 1,200+ students from 300+ universities submitted 230+ projects, and past sponsors include Google, NVIDIA, T-Mobile, Goldman Sachs, JPMorgan Chase, and Texas Instruments.
+
+There are a lot of ways to get involved, like a sponsored prize track, a workshop or talk, or having your team judge, and we're happy to put together a package that fits {{company}}. Anyone interested in judging can sign up here: https://acmutd.typeform.com/to/d7pEj05a
+
+If you're interested, I'd be happy to send over our sponsorship details or set up a quick call.
+
+Thank you for your time and consideration. Hope to hear from you soon!
+
+Best regards,
+{{sender_name}}
+{{sender_title}}, HackUTD
+The University of Texas at Dallas
+{{sender_email}}

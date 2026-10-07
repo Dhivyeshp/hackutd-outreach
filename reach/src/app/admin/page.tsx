@@ -15,12 +15,24 @@ interface OrgStats {
   sentLast24h: number;
   bounceRate: number;
 }
+interface VariantCounts {
+  sent: number;
+  replied: number;
+  bounced: number;
+  optedOut: number;
+}
+interface AbData extends Record<'A' | 'B', VariantCounts> {
+  running: boolean;
+  percentB: number;
+  verdict: 'A' | 'B' | 'tie' | 'too_early';
+}
 interface Data {
   organizers: { id: string; name: string; email: string; paused: boolean; pausedReason: string | null; gmailConnected: boolean; stats: OrgStats }[];
   quota: { used: number; pauseAt: number };
   global: { paused: boolean; reason: string };
   alerts: { id: string; createdAt: string; level: string; message: string }[];
   unassigned: number;
+  ab: AbData | null;
 }
 
 export default function AdminDashboard() {
@@ -109,6 +121,8 @@ export default function AdminDashboard() {
         )}
       </Card>
 
+      {data.ab && <AbCard ab={data.ab} />}
+
       <Card className="overflow-x-auto p-0">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-white/10 text-xs uppercase tracking-wide text-zinc-500">
@@ -150,5 +164,50 @@ export default function AdminDashboard() {
         </table>
       </Card>
     </div>
+  );
+}
+
+const VERDICT: Record<AbData['verdict'], string> = {
+  too_early: 'Too early to call. Each version needs at least 100 sends.',
+  tie: 'No clear winner yet. The reply rates are too close to tell apart.',
+  A: 'Version A is getting more replies (95% confident).',
+  B: 'Version B is getting more replies (95% confident).',
+};
+
+const pct = (n: number, d: number) => (d ? `${((n / d) * 100).toFixed(1)}%` : '0.0%');
+
+function AbCard({ ab }: { ab: AbData }) {
+  return (
+    <Card className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-semibold">A/B test results</h2>
+        <Badge tone={ab.running ? 'green' : 'slate'}>{ab.running ? `Running, ${ab.percentB}% get B` : 'Off'}</Badge>
+      </div>
+      <table className="w-full text-left text-sm">
+        <thead className="text-xs uppercase tracking-wide text-zinc-500">
+          <tr>
+            {['Version', 'Sent', 'Replied', 'Reply rate', 'Bounced', 'Opted out'].map((h) => (
+              <th key={h} className="py-2 pr-4">
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/10">
+          {(['A', 'B'] as const).map((v) => (
+            <tr key={v}>
+              <td className="py-2 pr-4 font-medium">{v}</td>
+              <td className="py-2 pr-4 tabular-nums">{ab[v].sent}</td>
+              <td className="py-2 pr-4 tabular-nums">{ab[v].replied}</td>
+              <td className="py-2 pr-4 tabular-nums">{pct(ab[v].replied, ab[v].sent)}</td>
+              <td className="py-2 pr-4 tabular-nums">{ab[v].bounced}</td>
+              <td className="py-2 pr-4 tabular-nums">{ab[v].optedOut}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="text-sm text-zinc-400">{VERDICT[ab.verdict]}</p>
+      <p className="text-xs text-zinc-500">Replies are the measure: there is no open or click tracking. Counts include only emails sent while the test was on.</p>
+    </Card>
   );
 }

@@ -1,4 +1,5 @@
 import { requireUser } from '@/lib/auth';
+import { contentFor, variantFor } from '@/lib/ab';
 import { composeEmail } from '@/lib/compose';
 import { parseKind } from '@/lib/kind';
 import { senderOf } from '@/lib/sender';
@@ -22,7 +23,7 @@ export const GET = handle(async (req: Request) => {
     }),
   ]);
   const preview = next
-    ? { to: next.email, ...composeEmail(campaign, next, senderOf(user)) }
+    ? { to: next.email, ...composeEmail(contentFor(campaign, variantFor(campaign, next.id)), next, senderOf(user)) }
     : null;
   return ok({
     user: { name: user.name, email: user.email, role: user.role, gmailConnected: user.gmailConnected, paused: user.paused, pausedReason: user.pausedReason, pausedKinds: user.pausedKinds },

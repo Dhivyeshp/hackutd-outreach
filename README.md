@@ -303,6 +303,23 @@ Each kind has its own template (Admin > Template, with the Faculty | Sponsors sw
 
 Names lose Dr./Prof./suffixes, handle "Last, First", and fall back to "Professor" or "Hello". The linter warns about extra links, shorteners, ALL CAPS subjects and spammy words.
 
+### A/B testing
+
+Test two versions of an email against each other, for example plain text against HTML. Turn it on in Admin > Template with the Faculty | Sponsors switch set to the list you are testing.
+
+- **Version A** is the normal subject, body and optional HTML. **Version B** has its own subject, body and optional HTML. Leave a version's HTML empty and it goes out as a plain-text email.
+- Each contact gets A or B based on their id, so a contact always lands in the same version and the review screen shows exactly which one (a "Version B · plain text" badge). Choose the share that gets B (1-99%).
+- **Send test to me** sends both versions to your inbox as `[TEST A]` and `[TEST B]`.
+- Results are on the Dashboard: sends, replies, reply rate, bounces and opt-outs for each version, plus a cautious verdict. It says "too early" until each version has 100 sends, and only names a winner at 95% confidence. Replies are the measure, since there is no open tracking.
+- Only emails sent while the test is on are counted. Change one thing at a time (a different subject as well as plain versus HTML muddles the result).
+- If version B is missing its subject or text, everyone gets A.
+
+Load a plain-text file as version B from the command line (the test stays off until you switch it on):
+
+```bash
+npx tsx --env-file=.env prisma/load-version-b.ts email-templates/sponsor-plain.txt sponsor
+```
+
 Load a template file from the command line:
 
 ```bash
@@ -353,6 +370,7 @@ Every error the app shows ends with a code in brackets, for example `Admin only 
 | `E_FORBIDDEN` | Signed in, but admin only |
 | `E_CROSS_ORIGIN` | Request came from a different site and was blocked |
 | `E_NOT_FOUND` | The record does not exist |
+| `E_AB_INCOMPLETE` | The A/B test needs version B's subject and text before it can be turned on |
 | `E_REVIEW_FIRST` | Approve-all is locked until you have reviewed 10 emails of that kind |
 | `E_USER_PAUSED` | Your sending is paused by an admin or a safety rule |
 | `E_GMAIL_NOT_CONNECTED` | Connect Gmail first |

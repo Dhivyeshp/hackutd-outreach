@@ -1,4 +1,5 @@
 import type { Campaign, Contact, User } from '@prisma/client';
+import { abActive, contentFor, variantFor, type Variant } from './ab';
 import { composeEmail } from './compose';
 import { campaignIdFor, KINDS, type Kind } from './kind';
 import { senderOf } from './sender';
@@ -231,10 +232,12 @@ async function sendForUser(user: User, campaigns: Record<Kind, Campaign>, campai
 type Outcome = 'sent' | 'skip' | 'stop' | 'error';
 
 export async function sendOne(user: User, contact: Contact, campaign: Campaign, gmail: GmailClient, recent: Date[]): Promise<Outcome> {
+  const variant = variantFor(campaign, contact.id);
   // Idempotency: only one tick can flip QUEUED -> SENDING for a contact.
   const claim = await prisma.contact.updateMany({
     where: { id: contact.id, status: 'QUEUED', assignedToId: user.id },
-    data: { status: 'SENDING' },
+    // The version is stored only while a test is running, so results never mix in sends from before it.
+    data: { status: 'SENDING', ...(abActive(campaign) ? { variant } : {}) },
   });
   if (claim.count === 0) return 'skip';
 
@@ -246,7 +249,7 @@ export async function sendOne(user: User, contact: Contact, campaign: Campaign, 
     return 'skip';
   }
 
-  const email = composeEmail(campaign, contact, senderOf(user));
+  const email = composeEmail(contentFor(campaign, variant), contact, senderOf(user));
   const raw = toBase64Url(
     buildMime({ fromName: user.name || user.email, fromEmail: user.email, to: contact.email, subject: email.subject, text: email.text, html: email.html }),
   );
@@ -361,20 +364,24 @@ export async function sendTestEmail(user: User, kind: Kind = 'FACULTY'): Promise
   const campaign = await getCampaign(kind);
   const sample = await prisma.contact.findFirst({ where: { assignedToId: user.id, kind }, orderBy: { createdAt: 'asc' } });
   const fallback = kind === 'SPONSOR' ? { name: '', company: 'Example Corp', industry: 'Software' } : { name: 'Jane Smith', uni: 'Example University' };
-  const email = composeEmail(campaign, sample ?? fallback, senderOf(user));
-  const raw = toBase64Url(
-    buildMime({
-      fromName: user.name || user.email,
-      fromEmail: user.email,
-      to: user.email,
-      subject: `[TEST] ${email.subject}`,
-      text: email.text,
-      html: email.html,
-    }),
-  );
+  // While an A/B test runs, send both versions so you can compare them side by side in your inbox.
+  const versions: Variant[] = abActive(campaign) ? ['A', 'B'] : ['A'];
   const gmail = GmailClient.forRefreshToken(user.encryptedRefreshToken);
   try {
-    await gmail.send(raw);
+    for (const v of versions) {
+      const email = composeEmail(contentFor(campaign, v), sample ?? fallback, senderOf(user));
+      const raw = toBase64Url(
+        buildMime({
+          fromName: user.name || user.email,
+          fromEmail: user.email,
+          to: user.email,
+          subject: versions.length > 1 ? `[TEST ${v}] ${email.subject}` : `[TEST] ${email.subject}`,
+          text: email.text,
+          html: email.html,
+        }),
+      );
+      await gmail.send(raw);
+    }
   } finally {
     await addQuota(gmail.units);
   }

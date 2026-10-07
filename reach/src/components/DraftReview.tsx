@@ -6,7 +6,7 @@ import { api } from '@/lib/client-api';
 import { EmailPreview } from './EmailPreview';
 import { KIND_LABEL } from '@/lib/kind';
 import { useKind } from './KindContext';
-import { Button, Card, Notice } from './ui';
+import { Badge, Button, Card, Notice } from './ui';
 
 type View = 'drafts' | 'queued';
 type Decision = 'approve' | 'skip' | 'hold';
@@ -20,6 +20,7 @@ interface Draft {
   text: string;
   html: string;
   isHtmlTemplate: boolean;
+  variant: 'A' | 'B' | null;
 }
 interface Page {
   view: View;
@@ -146,7 +147,10 @@ export function DraftReview() {
         <Card key={d.id} className="space-y-3">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="text-xs text-zinc-500">To: {d.to}</div>
+              <div className="flex items-center gap-2 text-xs text-zinc-500">
+                To: {d.to}
+                {d.variant && <Badge tone="slate">Version {d.variant} · {d.isHtmlTemplate ? 'HTML' : 'plain text'}</Badge>}
+              </div>
               <div className="truncate font-semibold">{d.subject}</div>
             </div>
             <div className="flex gap-2">

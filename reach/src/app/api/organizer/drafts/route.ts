@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { requireUser } from '@/lib/auth';
+import { abActive, contentFor, variantFor } from '@/lib/ab';
 import { composeEmail } from '@/lib/compose';
 import { prisma } from '@/lib/db';
 import { getCampaign } from '@/lib/engine';
@@ -62,12 +63,17 @@ export const GET = handle(async (req: Request) => {
     view,
     counts: { drafts, queued, reviewed, reviewFirst: REVIEW_FIRST },
     nextCursor: rows.length > PAGE_SIZE ? page[page.length - 1].id : null,
-    drafts: page.map((c) => ({
-      id: c.id,
-      to: c.email,
-      name: c.name,
-      ...composeEmail(campaign, c, senderOf(user)),
-    })),
+    drafts: page.map((c) => {
+      const variant = variantFor(campaign, c.id);
+      return {
+        id: c.id,
+        to: c.email,
+        name: c.name,
+        // Which A/B version this contact gets; null when no test is running.
+        variant: abActive(campaign) ? variant : null,
+        ...composeEmail(contentFor(campaign, variant), c, senderOf(user)),
+      };
+    }),
   });
 });
 

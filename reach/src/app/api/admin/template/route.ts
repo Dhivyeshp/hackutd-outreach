@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { getCampaign } from '@/lib/engine';
-import { handle, ok, parseBody } from '@/lib/http';
+import { HttpError, handle, ok, parseBody } from '@/lib/http';
 import { campaignIdFor, parseKind } from '@/lib/kind';
 import { lintTemplate } from '@/lib/linter';
 
@@ -15,6 +15,11 @@ const update = z.object({
   allowNonValid: z.boolean(),
   active: z.boolean(),
   maxPerOrganizer: z.number().int().min(1).max(5000),
+  abEnabled: z.boolean().default(false),
+  abPercentB: z.number().int().min(1).max(99).default(50),
+  bSubject: z.string().max(200).nullable().default(null),
+  bBody: z.string().max(10_000).nullable().default(null),
+  bHtmlBody: z.string().max(200_000).nullable().default(null),
 });
 
 export const GET = handle(async (req: Request) => {
@@ -32,6 +37,9 @@ export const GET = handle(async (req: Request) => {
 export const PUT = handle(async (req: Request) => {
   await requireAdmin();
   const { kind, ...data } = await parseBody(req, update);
+  if (data.abEnabled && (!data.bSubject?.trim() || !data.bBody?.trim())) {
+    throw new HttpError(400, 'Version B needs its own subject and text before the A/B test can run', 'E_AB_INCOMPLETE');
+  }
   const id = campaignIdFor(kind);
   const campaign = await prisma.campaign.upsert({ where: { id }, update: data, create: { id, ...data } });
   return ok({ campaign, warnings: lintTemplate(campaign) });

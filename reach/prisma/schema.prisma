@@ -85,6 +85,7 @@ model Contact {
   gmailThreadId  String?
   gmailMessageId String?
   errorNote      String?
+  variant        String?
   lastCheckedAt  DateTime?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
@@ -105,6 +106,12 @@ model Campaign {
   mailingAddress String  @default("HackUTD, The University of Texas at Dallas, 800 W Campbell Rd, Richardson, TX 75080")
   allowNonValid  Boolean @default(false)
   maxPerOrganizer Int    @default(1300)
+  // A/B test: version A is the fields above, version B is below. B with no htmlBody is a plain-text email.
+  abEnabled      Boolean @default(false)
+  abPercentB     Int     @default(50)
+  bSubject       String?
+  bBody          String?
+  bHtmlBody      String?
 }
 
 model SendLog {
