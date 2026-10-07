@@ -55,6 +55,17 @@ interface Summary {
   duplicates: number;
   invalidSyntax: number;
   invalidVerified: number;
+  undeliverable: number;
+}
+
+interface Scan {
+  dryRun: boolean;
+  checked: number;
+  domains: number;
+  unknownDomains: number;
+  undeliverable: number;
+  wasQueued: number;
+  examples: string[];
 }
 
 export default function ImportPage() {
@@ -71,6 +82,7 @@ export default function ImportPage() {
   // Empty set means "everyone"; otherwise only the ticked people get contacts.
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
   const [maxEach, setMaxEach] = useState('');
+  const [scan, setScan] = useState<Scan | null>(null);
 
   useEffect(() => {
     api<Person[]>('/api/admin/organizers')
@@ -90,6 +102,7 @@ export default function ImportPage() {
     if (headers.length) setMapping(guessMapping(headers, kind) as Partial<Record<ContactField, string>>);
     setSummary(null);
     setAssignMsg('');
+    setScan(null);
   }, [kind, headers]);
 
   async function onFile(file: File | undefined) {
@@ -108,6 +121,18 @@ export default function ImportPage() {
     try {
       const res = await api<{ summary: Summary }>('/api/admin/contacts/import', { body: { csv, mapping, kind } });
       setSummary(res.summary);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function runScan(dryRun: boolean) {
+    setBusy(true);
+    setError('');
+    try {
+      setScan(await api<Scan>('/api/admin/contacts/check', { body: { kind, dryRun } }));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -177,7 +202,33 @@ export default function ImportPage() {
         {summary && (
           <Notice tone="green">
             Imported {summary.imported.toLocaleString()} of {summary.total.toLocaleString()} rows. {summary.duplicates} duplicates skipped, {summary.invalidSyntax} missing or bad emails,{' '}
-            {summary.invalidVerified} marked invalid by your verification column.
+            {summary.invalidVerified} marked invalid by your verification column, {summary.undeliverable} skipped because their domain cannot receive email.
+          </Notice>
+        )}
+      </Card>
+
+      <Card className="space-y-3">
+        <h2 className="font-semibold">Check for undeliverable addresses</h2>
+        <p className="text-sm text-zinc-400">
+          Looks up every {KIND_LABEL[kind].toLowerCase()} contact that has not been sent yet and finds email domains that cannot receive mail at all. Those are the ones that bounce with "address not found". It cannot catch a mailbox that does not exist on a working domain.
+          New imports are checked automatically.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" disabled={busy} onClick={() => runScan(true)}>
+            {busy ? 'Checking…' : 'Scan'}
+          </Button>
+          {scan?.dryRun && scan.undeliverable > 0 && (
+            <Button disabled={busy} onClick={() => runScan(false)}>
+              Remove {scan.undeliverable} undeliverable
+            </Button>
+          )}
+        </div>
+        {scan && (
+          <Notice tone={scan.undeliverable ? 'amber' : 'green'}>
+            Checked {scan.checked.toLocaleString()} contacts across {scan.domains.toLocaleString()} domains. {scan.undeliverable}{' '}
+            {scan.dryRun ? 'would be removed' : 'removed and will never be sent'} ({scan.wasQueued} were already approved).
+            {scan.unknownDomains > 0 && ` ${scan.unknownDomains} domains could not be looked up and were left alone.`}
+            {scan.examples.length > 0 && ` Examples: ${scan.examples.join(', ')}.`}
           </Notice>
         )}
       </Card>

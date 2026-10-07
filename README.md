@@ -287,6 +287,8 @@ Rows with no usable `best_email` are counted as "missing or bad emails" and skip
 
 **Assign:** Contacts > step 2. Leave everyone unticked to split round-robin across all active organizers, or tick specific people (for example only yourself) to give them everything. The **Max per person** box overrides the Template tab's limit (default 1,300).
 
+**Check addresses:** Contacts > Check for undeliverable addresses looks up the email domain of every contact not yet sent and removes the ones whose domain cannot receive mail (no mail server). New imports are checked automatically. This does not catch a mailbox that does not exist on a working domain, which is the usual cause of "Address not found" bounces. For those, run the list through a verification service (NeverBounce, ZeroBounce) and import with a verification column.
+
 **Review:** nothing sends until it is approved. Review drafts shows 10 emails at a time. Approve or skip the first 10 of a kind, and an **Approve all** button unlocks for everything that is left (fails with `E_REVIEW_FIRST` before then). You can still pull any approved email back before it goes out.
 
 ## Templates
@@ -342,6 +344,7 @@ What each auto-pause means (all show on the admin dashboard as alerts):
 
 - **User bounce rate**: more than 3% of that organizer's last 100 sends bounced (needs at least 50 sends). That organizer is paused. Clean the list, then Unpause on the Organizers tab, which restarts the count from that moment.
 - **Global bounce rate**: more than 3% of all sends in 7 days bounced (needs 100+ sends). **Everyone** is paused. "Resume everyone" on the dashboard restarts the count from that moment.
+- **Per-list bounce rate**: the same 3% rule is also checked separately for faculty and sponsors on each organizer's last 100 sends of that list. If one list is bad, only that list is paused (an alert appears on the dashboard) and the other keeps sending. Fix the list, then press **Resume** for it, which restarts the count.
 - **Gmail suspicious activity / sending limit error**: Google flagged an account. **Everyone** is paused. Do not resume until you know why.
 - **Rate limit (429)**: retried with backoff, then that organizer is paused for 1 hour automatically.
 - **Daily limit**: that organizer is paused until their rolling 24h window clears.

@@ -14,6 +14,8 @@ import {
   addQuota,
   allowTestSend,
   bounceBaseline,
+  kindBounceBaseline,
+  resetKindBounceBaseline,
   enforceProjectQuota,
   getGlobalPause,
   raiseAlert,
@@ -171,9 +173,33 @@ async function userBouncePaused(user: User): Promise<boolean> {
   return true;
 }
 
+/**
+ * Bounce rate on this organizer's last 100 sends of one kind. A good faculty list must not hide a bad sponsor list,
+ * so each kind is judged alone and only the bad one is paused.
+ */
+async function kindBouncePaused(user: User, kind: Kind): Promise<boolean> {
+  const since = (await kindBounceBaseline(user.id, kind)) ?? user.bounceCheckSince;
+  const last100 = await prisma.sendLog.findMany({
+    where: { userId: user.id, result: 'ok', contact: { kind }, ...(since ? { sentAt: { gt: since } } : {}) },
+    orderBy: { sentAt: 'desc' },
+    take: 100,
+    select: { contactId: true },
+  });
+  const bounced = last100.length ? await prisma.contact.count({ where: { id: { in: last100.map((l) => l.contactId) }, status: 'BOUNCED' } }) : 0;
+  if (!userBounceExceeded({ sent: last100.length, bounced })) return false;
+  await setKindPaused(user, kind, true);
+  await raiseAlert(
+    'critical',
+    `${user.name || user.email}: ${kind.toLowerCase()} emails paused. ${bounced} of the last ${last100.length} bounced. Check the list, then Resume ${kind.toLowerCase()} on their dashboard.`,
+  );
+  return true;
+}
+
 async function sendForUser(user: User, campaigns: Record<Kind, Campaign>, campaignKinds: Kind[], now: Date): Promise<UserTick> {
   // Faculty and sponsors can each be paused on their own, so only send the kinds this person left running.
-  const activeKinds = campaignKinds.filter((k) => !user.pausedKinds.includes(k));
+  const running = campaignKinds.filter((k) => !user.pausedKinds.includes(k));
+  const activeKinds: Kind[] = [];
+  for (const k of running) if (!(await kindBouncePaused(user, k))) activeKinds.push(k);
   if (!activeKinds.length) return { userId: user.id, sent: 0, note: 'paused: all kinds' };
   if (!inSendWindow(now, user.timezone)) return { userId: user.id, sent: 0, note: 'outside window' };
   if (await userBouncePaused(user)) return { userId: user.id, sent: 0, note: 'paused: bounce rate' };
@@ -336,6 +362,8 @@ async function handleSendError(user: User, contact: Contact, err: unknown, recen
 
 /** Pause or resume one kind (faculty or sponsors) for one organizer without touching the other. */
 export async function setKindPaused(user: User, kind: Kind, paused: boolean): Promise<void> {
+  // Resuming starts a fresh bounce count, otherwise the old bounces would pause the list again straight away.
+  if (!paused && user.pausedKinds.includes(kind)) await resetKindBounceBaseline(user.id, kind);
   const rest = user.pausedKinds.filter((k) => k !== kind);
   await prisma.user.update({ where: { id: user.id }, data: { pausedKinds: paused ? [...rest, kind] : rest } });
 }

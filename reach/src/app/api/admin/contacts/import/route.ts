@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/auth';
 import { importRows, parseCsv, type ImportedContact } from '@/lib/csv-import';
 import { prisma } from '@/lib/db';
 import { HttpError, handle, ok, parseBody } from '@/lib/http';
+import { checkDomains, domainOf } from '@/lib/mx';
 
 export const maxDuration = 60;
 
@@ -37,6 +38,17 @@ export const POST = handle(async (req: Request) => {
   const existing = new Set((await prisma.contact.findMany({ select: { email: true } })).map((c) => c.email));
   const result = importRows(rows, mapping, existing, kind);
 
+  // Domains that cannot receive mail at all are saved as INVALID, so they are never sent to (and never re-imported).
+  const statuses = await checkDomains(result.contacts.map((c) => domainOf(c.email)));
+  let undeliverable = 0;
+  for (const c of result.contacts) {
+    if (statuses.get(domainOf(c.email)) === 'dead') {
+      c.verification = 'invalid';
+      c.status = 'invalid';
+      undeliverable++;
+    }
+  }
+
   let created = 0;
   for (let i = 0; i < result.contacts.length; i += CHUNK) {
     const res = await prisma.contact.createMany({
@@ -58,5 +70,5 @@ export const POST = handle(async (req: Request) => {
     });
     created += res.count;
   }
-  return ok({ summary: { ...result.summary, imported: created }, rejected: result.rejected.slice(0, 25) });
+  return ok({ summary: { ...result.summary, imported: created - undeliverable, undeliverable }, rejected: result.rejected.slice(0, 25) });
 });

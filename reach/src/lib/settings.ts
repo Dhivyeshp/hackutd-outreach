@@ -46,6 +46,15 @@ export async function bounceBaseline(): Promise<Date | null> {
   return v ? new Date(Number(v)) : null;
 }
 
+/** When bounce counting restarted for one organizer's faculty or sponsor list (set when they resume it). */
+export async function kindBounceBaseline(userId: string, kind: string): Promise<Date | null> {
+  const v = await getSetting(`kindBounceSince:${userId}:${kind}`);
+  return v ? new Date(Number(v)) : null;
+}
+
+export const resetKindBounceBaseline = (userId: string, kind: string, now = new Date()) =>
+  upsertSetting(`kindBounceSince:${userId}:${kind}`, String(now.getTime()));
+
 export async function raiseAlert(level: 'warning' | 'critical', message: string): Promise<void> {
   await prisma.alert.create({ data: { level, message } });
 }
