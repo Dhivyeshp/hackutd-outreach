@@ -6,6 +6,8 @@ export interface CampaignContent {
   body: string;
   htmlBody?: string | null;
   mailingAddress: string;
+  /** Add the STOP opt-out line (and the mailing address for plain text). Defaults to true. */
+  footer?: boolean;
 }
 
 export interface ComposedEmail {
@@ -25,11 +27,14 @@ export function composeEmail(campaign: CampaignContent, contact: TemplateContact
   const s: Sender = typeof sender === 'string' ? { name: sender } : sender;
   const subject = renderTemplate(campaign.subject, contact, s).replace(/[\r\n]+/g, ' ').trim();
 
+  const footer = campaign.footer !== false;
   if (campaign.htmlBody?.trim()) {
-    const html = injectOptOut(renderHtmlTemplate(campaign.htmlBody, contact, s));
+    const rendered = renderHtmlTemplate(campaign.htmlBody, contact, s);
+    const html = footer ? injectOptOut(rendered) : rendered;
     return { subject, html, text: htmlToText(html), isHtmlTemplate: true };
   }
-  const text = appendFooter(renderTemplate(campaign.body, contact, s), campaign.mailingAddress);
+  const rendered = renderTemplate(campaign.body, contact, s);
+  const text = footer ? appendFooter(rendered, campaign.mailingAddress) : rendered.trimEnd();
   return { subject, text, html: textToHtml(text), isHtmlTemplate: false };
 }
 

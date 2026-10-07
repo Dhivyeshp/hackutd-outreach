@@ -16,4 +16,14 @@ describe('composeEmail', () => {
     const e = composeEmail({ ...campaign, subject: 'a\r\nBcc: x@y.com' }, { name: 'Jane Smith' }, 'Sam');
     expect(e.subject).not.toMatch(/[\r\n]/);
   });
+  it('leaves out the STOP line and address when the footer is off (plain text)', () => {
+    const e = composeEmail({ ...campaign, footer: false }, { name: 'Dr. Jane Smith' }, 'Sam');
+    expect(e.text).toBe('Dear Jane Smith,\nfrom Sam');
+    expect(e.html).not.toMatch(/reply STOP/i);
+  });
+  it('leaves out the injected STOP line in HTML emails when the footer is off', () => {
+    const html = '<html><body><p>Hello {{name}}</p></body></html>';
+    expect(composeEmail({ ...campaign, htmlBody: html }, { name: 'Jane Smith' }, 'Sam').html).toMatch(/reply STOP/i);
+    expect(composeEmail({ ...campaign, htmlBody: html, footer: false }, { name: 'Jane Smith' }, 'Sam').html).not.toMatch(/STOP/);
+  });
 });

@@ -107,6 +107,8 @@ model Campaign {
   allowNonValid  Boolean @default(false)
   maxPerOrganizer Int    @default(1300)
   // A/B test: version A is the fields above, version B is below. B with no htmlBody is a plain-text email.
+  // Add the STOP line and mailing address to outgoing emails. On by default.
+  footer         Boolean @default(true)
   abEnabled      Boolean @default(false)
   abPercentB     Int     @default(50)
   bSubject       String?

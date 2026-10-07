@@ -35,7 +35,7 @@ export const variantFor = (c: AbCampaign, contactId: string): Variant => (abActi
 /** The subject/body/HTML to render for a version. B with no HTML is a plain-text email. */
 export function contentFor(c: AbCampaign, variant: Variant): CampaignContent {
   if (variant === 'A') return c;
-  return { subject: c.bSubject ?? c.subject, body: c.bBody ?? c.body, htmlBody: c.bHtmlBody?.trim() ? c.bHtmlBody : null, mailingAddress: c.mailingAddress };
+  return { subject: c.bSubject ?? c.subject, body: c.bBody ?? c.body, htmlBody: c.bHtmlBody?.trim() ? c.bHtmlBody : null, mailingAddress: c.mailingAddress, footer: c.footer };
 }
 
 export interface RateInput {

@@ -17,6 +17,7 @@ interface Campaign {
   allowNonValid: boolean;
   active: boolean;
   maxPerOrganizer: number;
+  footer: boolean;
   abEnabled: boolean;
   abPercentB: number;
   bSubject: string | null;
@@ -157,10 +158,10 @@ export default function TemplatePage() {
             placeholder="Paste a full HTML email here. When set, it replaces the plain-text body above. Leave empty for a plain-text email."
             onChange={(e) => set(f.html, (e.target.value.trim() ? e.target.value : null) as never)}
           />
-          <span className="mt-1 block text-xs text-zinc-500">The STOP opt-out line is added automatically.</span>
+          <span className="mt-1 block text-xs text-zinc-500">The STOP opt-out line is added unless you turn it off below.</span>
         </label>
         <label className="block text-sm">
-          <span className="mb-1 block font-medium">Mailing address (added to plain-text emails with a STOP line)</span>
+          <span className="mb-1 block font-medium">Mailing address (used in the STOP footer of plain-text emails)</span>
           <input className={inputCls} value={c.mailingAddress} onChange={(e) => set('mailingAddress', e.target.value)} />
         </label>
         <div className="grid grid-cols-2 gap-3 text-sm">
@@ -171,6 +172,9 @@ export default function TemplatePage() {
           <div className="space-y-2 pt-6">
             <label className="flex items-center gap-2">
               <input type="checkbox" checked={c.active} onChange={(e) => set('active', e.target.checked)} /> Campaign active
+            </label>
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={c.footer} onChange={(e) => set('footer', e.target.checked)} /> Add STOP line + address
             </label>
             <label className="flex items-center gap-2">
               <input type="checkbox" checked={c.allowNonValid} onChange={(e) => set('allowNonValid', e.target.checked)} /> Also send to risky/unknown

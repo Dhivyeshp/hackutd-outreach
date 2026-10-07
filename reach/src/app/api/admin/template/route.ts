@@ -15,6 +15,7 @@ const update = z.object({
   allowNonValid: z.boolean(),
   active: z.boolean(),
   maxPerOrganizer: z.number().int().min(1).max(5000),
+  footer: z.boolean().default(true),
   abEnabled: z.boolean().default(false),
   abPercentB: z.number().int().min(1).max(99).default(50),
   bSubject: z.string().max(200).nullable().default(null),
