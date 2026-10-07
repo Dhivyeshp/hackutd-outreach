@@ -3,10 +3,12 @@ import { requireUser } from '@/lib/auth';
 import { composeEmail } from '@/lib/compose';
 import { prisma } from '@/lib/db';
 import { getCampaign } from '@/lib/engine';
-import { handle, ok, parseBody, parseWith } from '@/lib/http';
+import { HttpError, handle, ok, parseBody, parseWith } from '@/lib/http';
 import { senderOf } from '@/lib/sender';
 
 const PAGE_SIZE = 10;
+/** Approve-all unlocks once this many emails of the kind have been looked at (approved, skipped, or already sent). */
+const REVIEW_FIRST = 10;
 const query = z.object({
   cursor: z.string().min(1).max(64).optional(),
   view: z.enum(['drafts', 'queued']).default('drafts'),
@@ -15,12 +17,18 @@ const query = z.object({
 const decide = z
   .object({
     ids: z.array(z.string().min(1)).min(1).max(100).optional(),
-    /** Pull every queued email back to drafts in one go. Only valid with decision "hold". */
+    /** Act on every email of this kind at once. Only valid with decision "hold" or "approve". */
     all: z.literal(true).optional(),
     decision: z.enum(['approve', 'skip', 'hold']),
     kind: z.enum(['FACULTY', 'SPONSOR']).default('FACULTY'),
   })
-  .refine((v) => (v.all ? v.decision === 'hold' : !!v.ids), { message: 'Provide ids, or all:true with decision "hold"' });
+  .refine((v) => (v.all ? v.decision === 'hold' || v.decision === 'approve' : !!v.ids), {
+    message: 'Provide ids, or all:true with decision "hold" or "approve"',
+  });
+
+/** Emails of one kind this organizer has already decided on: approved, skipped, or past that (sent, replied, bounced...). */
+const countReviewed = (userId: string, kind: 'FACULTY' | 'SPONSOR') =>
+  prisma.contact.count({ where: { assignedToId: userId, kind, status: { notIn: ['PENDING', 'INVALID', 'DUPLICATE'] } } });
 
 /**
  * view=drafts: this organizer's PENDING contacts (waiting for approval).
@@ -38,7 +46,7 @@ export const GET = handle(async (req: Request) => {
   const verification = campaign.allowNonValid ? { not: 'INVALID' as const } : ('VALID' as const);
   const pendingWhere = { assignedToId: user.id, kind, status: 'PENDING' as const, verification };
   const queuedWhere = { assignedToId: user.id, kind, status: 'QUEUED' as const };
-  const [rows, drafts, queued] = await Promise.all([
+  const [rows, drafts, queued, reviewed] = await Promise.all([
     prisma.contact.findMany({
       where: view === 'queued' ? queuedWhere : pendingWhere,
       orderBy: { id: 'asc' },
@@ -47,11 +55,12 @@ export const GET = handle(async (req: Request) => {
     }),
     prisma.contact.count({ where: pendingWhere }),
     prisma.contact.count({ where: queuedWhere }),
+    countReviewed(user.id, kind),
   ]);
   const page = rows.slice(0, PAGE_SIZE);
   return ok({
     view,
-    counts: { drafts, queued },
+    counts: { drafts, queued, reviewed, reviewFirst: REVIEW_FIRST },
     nextCursor: rows.length > PAGE_SIZE ? page[page.length - 1].id : null,
     drafts: page.map((c) => ({
       id: c.id,
@@ -74,8 +83,14 @@ export const POST = handle(async (req: Request) => {
     hold: { from: ['QUEUED'], to: 'PENDING' },
     skip: { from: ['PENDING', 'QUEUED'], to: 'SKIPPED' },
   }[decision] as { from: ('PENDING' | 'QUEUED')[]; to: 'PENDING' | 'QUEUED' | 'SKIPPED' };
+  if (all && decision === 'approve' && (await countReviewed(user.id, kind)) < REVIEW_FIRST) {
+    throw new HttpError(409, `Review and approve at least ${REVIEW_FIRST} emails first, then you can approve the rest at once`, 'E_REVIEW_FIRST');
+  }
+  // Approve-all must respect the same verification rule as the list the organizer saw.
+  const campaign = decision === 'approve' && all ? await getCampaign(kind) : null;
+  const verification = campaign ? { verification: campaign.allowNonValid ? { not: 'INVALID' as const } : ('VALID' as const) } : {};
   const res = await prisma.contact.updateMany({
-    where: { ...(all ? { kind } : { id: { in: ids } }), assignedToId: user.id, status: { in: rule.from } },
+    where: { ...(all ? { kind, ...verification } : { id: { in: ids } }), assignedToId: user.id, status: { in: rule.from } },
     data: { status: rule.to },
   });
   return ok({ updated: res.count });

@@ -4,11 +4,13 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '@/lib/client-api';
 import { EmailPreview } from './EmailPreview';
+import { KIND_LABEL } from '@/lib/kind';
 import { useKind } from './KindContext';
 import { Button, Card, Notice } from './ui';
 
 type View = 'drafts' | 'queued';
 type Decision = 'approve' | 'skip' | 'hold';
+type Body = { ids: string[]; decision: Decision } | { all: true; decision: 'approve' | 'hold' };
 
 interface Draft {
   id: string;
@@ -21,7 +23,7 @@ interface Draft {
 }
 interface Page {
   view: View;
-  counts: { drafts: number; queued: number };
+  counts: { drafts: number; queued: number; reviewed: number; reviewFirst: number };
   nextCursor: string | null;
   drafts: Draft[];
 }
@@ -45,7 +47,7 @@ export function DraftReview() {
     void load(view);
   }, [load, view]);
 
-  async function decide(body: { ids?: string[]; all?: true; decision: Decision }, done: string) {
+  async function decide(body: Body, done: string) {
     setBusy(true);
     setError('');
     try {
@@ -62,6 +64,9 @@ export function DraftReview() {
   if (!page) return error ? <Notice tone="red">{error}</Notice> : <p className="text-zinc-500">Loading drafts…</p>;
 
   const queuedView = view === 'queued';
+  const kindWord = KIND_LABEL[kind].toLowerCase();
+  const canApproveAll = page.counts.reviewed >= page.counts.reviewFirst && page.counts.drafts > page.drafts.length;
+  const stillToReview = Math.max(0, page.counts.reviewFirst - page.counts.reviewed);
   const tab = (v: View, label: string, n: number) => (
     <button
       onClick={() => {
@@ -95,16 +100,32 @@ export function DraftReview() {
           </Button>
         )}
         {!queuedView && page.drafts.length > 0 && (
-          <Button disabled={busy} onClick={() => decide({ ids: page.drafts.map((d) => d.id), decision: 'approve' }, 'approved. They send during your next send window.')}>
-            Approve these {page.drafts.length}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button disabled={busy} onClick={() => decide({ ids: page.drafts.map((d) => d.id), decision: 'approve' }, 'approved. They send during your next send window.')}>
+              Approve these {page.drafts.length}
+            </Button>
+            {canApproveAll && (
+              <Button
+                variant="secondary"
+                disabled={busy}
+                onClick={() =>
+                  window.confirm(`Approve all ${page.counts.drafts} remaining ${kindWord} emails? They send during your send windows, and you can still pull them back before they go.`) &&
+                  decide({ all: true, decision: 'approve' }, 'approved. They send during your send windows.')
+                }
+              >
+                Approve all {page.counts.drafts}
+              </Button>
+            )}
+          </div>
         )}
       </div>
 
       <p className="text-sm text-zinc-400">
         {queuedView
           ? 'These are approved and will send automatically. A send run may take some at any moment. Pull any back or skip them here.'
-          : 'Nothing is sent until you approve it.'}
+          : stillToReview > 0
+            ? `Nothing is sent until you approve it. Look through and approve ${stillToReview} more ${kindWord} email${stillToReview === 1 ? '' : 's'} first, then you can approve the rest at once.`
+            : 'Nothing is sent until you approve it. You have reviewed enough to approve everything that is left at once.'}
       </p>
 
       {page.drafts.length === 0 && (
