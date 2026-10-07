@@ -136,7 +136,7 @@ export function OrganizerPanel() {
             </Button>
           )}
         </div>
-        <p className="text-xs text-zinc-500">Emails go out 8am–7pm Central, about 165 an hour, with a short random gap between each.</p>
+        <p className="text-xs text-zinc-500">Emails go out 8am–7pm Central, up to 200 an hour, with a short random gap between each.</p>
       </Card>
     </div>
   );

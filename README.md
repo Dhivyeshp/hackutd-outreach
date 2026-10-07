@@ -38,7 +38,7 @@ Next.js (App Router) · TypeScript · Tailwind · Prisma + Supabase Postgres · 
 
 - **Admins** import a contacts CSV (Faculty or Sponsors), invite organizers, assign contacts, and edit each template.
 - **Organizers** sign in, click **Connect Gmail** once, review their drafts, then **Start sending**.
-- A cron hits `/api/cron/send` every 5 minutes. Each organizer inside their 8am-7pm window sends a small batch (about 165/hour for a 1,000/day cap, 12-25s random gaps, so about 14 per run).
+- A cron hits `/api/cron/send` every 5 minutes. Each organizer inside their 8am-7pm window sends a small batch (up to 200/hour, 8-16s random gaps, so about 17 per run).
 - A cron hits `/api/cron/track` every 30 minutes to detect replies, bounces and opt-outs.
 - The **Faculty | Sponsors** switch at the top of every screen picks which list you are looking at. It is remembered in your browser.
 - No open or click tracking. Every email gets a "reply STOP" line and the mailing address from the template.
@@ -108,7 +108,7 @@ flowchart TD
     I -- yes --> P2[Pause that organizer]
     I -- no --> J["Work out allowance: rolling 24h cap, ramp, pace, 30/min"]
     J --> K["Take the next N QUEUED contacts, skipping any paused kind"]
-    K --> L[Send one, wait 12-25s, re-check pauses, repeat]
+    K --> L[Send one, wait 8-16s, re-check pauses, repeat]
     L --> M[Log the send and its quota cost]
 ```
 
@@ -318,7 +318,7 @@ Leave off `sponsor` to load the faculty template.
 | Daily cap per organizer | 1,000 default, hard max 1,500, rolling 24h window, shared by faculty and sponsors |
 | Ramp (admin toggle) | First 24h after first send: 300, then full cap |
 | Window | 8am-7pm in the organizer's timezone |
-| Pace | The daily cap is spread over about 6 hours of the 10-hour window (cap/6 per hour, 165/hr at 1,000), 12-25s random gaps, never above 30/min. Each 5-minute run fits about 14 sends per organizer |
+| Pace | Up to 200 an hour per organizer, 8-16s random gaps, never above 30/min, and never past the daily cap. Each 5-minute run sends about 17 per organizer. At the 1,000/day cap that is about 5 hours of sending |
 | Recipients | One per message, never BCC or CC |
 
 What each auto-pause means (all show on the admin dashboard as alerts):

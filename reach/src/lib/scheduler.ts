@@ -1,9 +1,10 @@
 const WINDOW_START_HOUR = 8;
 const WINDOW_END_HOUR = 19;
-/** The daily cap is spread over this many hours (of the 10-hour window), i.e. cap/6 per hour. */
-const PACE_HOURS = 6;
-export const GAP_MIN_MS = 12_000;
-export const GAP_MAX_MS = 25_000;
+/** Each organizer sends at most this many emails an hour (the daily cap still applies on top). */
+export const HOURLY_TARGET = 200;
+// 17 sends per 5-minute run need 16 gaps, which at 8-16s fits well inside the 265s tick budget.
+export const GAP_MIN_MS = 8_000;
+export const GAP_MAX_MS = 16_000;
 const TICKS_PER_HOUR = 12; // cron every 5 minutes
 export const DEFAULT_TZ = 'America/Chicago';
 
@@ -25,7 +26,7 @@ export function inSendWindow(now: Date, timeZone: string): boolean {
   return h >= WINDOW_START_HOUR && h < WINDOW_END_HOUR;
 }
 
-/** Random 12-25s gap between sends. */
+/** Random 8-16s gap between sends. */
 export function gapMs(rand: () => number = Math.random): number {
   return GAP_MIN_MS + Math.floor(rand() * (GAP_MAX_MS - GAP_MIN_MS + 1));
 }
@@ -38,10 +39,10 @@ export interface BatchInput {
   queued: number;
 }
 
-/** How many emails one organizer may send this tick, spreading the daily cap across the window (~cap/6 per hour). */
+/** How many emails one organizer may send this tick, at up to HOURLY_TARGET per hour (200). */
 export function batchSize(i: BatchInput): number {
   if (i.cap <= 0) return 0;
-  const hourlyTarget = Math.ceil(i.cap / PACE_HOURS);
+  const hourlyTarget = Math.min(HOURLY_TARGET, i.cap);
   const perTick = Math.ceil(hourlyTarget / TICKS_PER_HOUR);
   const n = Math.min(perTick, hourlyTarget - i.sentLastHour, i.remainingDaily, i.perMinuteRemaining, i.queued);
   return Math.max(n, 0);
